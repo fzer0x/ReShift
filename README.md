@@ -1,4 +1,4 @@
-# 🐍 ReShift (Snakeloader)
+# 🐍 ReShift
 
 **ReShift** is a high-performance Android instrumentation and security research toolkit. It integrates the power of **Frida** and **Zygisk** into a unified, mobile-first interface designed for advanced dynamic analysis, reversing, and stealthy app research.
 

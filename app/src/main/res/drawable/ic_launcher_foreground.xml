@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Stylized 'S' for SHIFT - Bold and Geometric -->
+    <path
+        android:fillColor="#00695C"
+        android:pathData="M32,32 h44 v12 H44 v8 h32 v32 H32 V72 h32 V64 H32 V32 Z" />
+
+    <!-- Dot for RE/Accent - Matches the Home screen branding -->
+    <path
+        android:fillColor="#B2DFDB"
+        android:pathData="M18,32 a5,5 0,1 0,10 0 a5,5 0,1 0,-10 0" />
+
+    <!-- Minimalist Bracket/Shift indicator -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.2"
+        android:pathData="M82,32 v52 h10 V32 Z" />
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.2"
+        android:pathData="M74,32 h18 v8 H82 Z M74,84 h18 v-8 H82 Z" />
+</vector>

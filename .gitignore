@@ -1,0 +1,36 @@
+# Built artifacts
+bin
+gen
+out
+/build
+.gradle
+.kotlin
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+
+# Local configuration
+local.properties
+keystore.properties
+*.jks
+*.keystore
+
+# Temporary / OS files
+captures/
+.externalNativeBuild/
+.cxx/
+*.bak
+*.swp
+*~
+
+# Requested Ignores
+ZygiskModuleScr/
+.artifacts/
+.junie/
+
+# Android Studio Log files
+/captures

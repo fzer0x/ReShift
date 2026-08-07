@@ -255,7 +255,7 @@ fun AdvancedFridaScreen(
                         val scriptContent = viewModel.customScriptContents.value[scriptName] ?: loadAssetScript(scriptName)
                         val priority = when (scriptName) {
                             "rpc_handler.js" -> 3
-                            "Memory_Dumper.js" -> 2
+                            "memory_dumper.js" -> 2
                             else -> 0
                         }
                         FridaScript(name = scriptName, content = scriptContent, priority = priority)
@@ -305,7 +305,7 @@ private fun FridaStatusHeader(status: Map<String, Any>) {
                     color = if (serverRunning) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
                 )
                 StatusBadge(
-                    label = "HEALTH",
+                    label = "",
                     value = if (isSmooth) "OK" else "ERR",
                     color = if (isSmooth) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
                 )
@@ -389,16 +389,27 @@ private fun ConfigurationSection(viewModel: AdvancedFridaViewModel, fridaManager
             }
 
             ConfigGroup("BINARY") {
+                val available = viewModel.availableBinaries.value
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     StrategyChip("Auto", viewModel.selectedFridaBinary.value == "auto", modifier = Modifier.weight(1f)) {
                         viewModel.setSelectedFridaBinary("auto")
                         fridaManager.selectedFridaBinary = "auto"
                     }
-                    StrategyChip("CLI", viewModel.selectedFridaBinary.value == "cli", modifier = Modifier.weight(1f)) {
+                    StrategyChip(
+                        label = "CLI",
+                        selected = viewModel.selectedFridaBinary.value == "cli", 
+                        available = available["cli"] ?: false,
+                        modifier = Modifier.weight(1f)
+                    ) {
                         viewModel.setSelectedFridaBinary("cli")
                         fridaManager.selectedFridaBinary = "cli"
                     }
-                    StrategyChip("Inject", viewModel.selectedFridaBinary.value == "inject", modifier = Modifier.weight(1f)) {
+                    StrategyChip(
+                        label = "Inject", 
+                        selected = viewModel.selectedFridaBinary.value == "inject", 
+                        available = available["inject"] ?: false,
+                        modifier = Modifier.weight(1f)
+                    ) {
                         viewModel.setSelectedFridaBinary("inject")
                         fridaManager.selectedFridaBinary = "inject"
                     }

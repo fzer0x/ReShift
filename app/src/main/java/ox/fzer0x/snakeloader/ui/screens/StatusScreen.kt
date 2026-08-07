@@ -162,11 +162,24 @@ fun StatusScreen(
                             
                             StatusRow(
                                 label = "Injection Mode",
-                                value = when (viewModel.runningFridaBinary) {
-                                    "cli" -> "RPC (CLI)"
-                                    "inject" -> "In-Process"
-                                    "server" -> "Server"
-                                    else -> "None"
+                                value = if (viewModel.runningFridaBinary != "none") {
+                                    when (viewModel.runningFridaBinary) {
+                                        "cli" -> "RPC"
+                                        "inject" -> "Inject"
+                                        "server" -> "Server"
+                                        else -> "Active"
+                                    }
+                                } else {
+                                    if (viewModel.fridaRunning) {
+                                        "Server"
+                                    } else {
+                                        when (viewModel.selectedFridaBinary) {
+                                            "cli" -> "RPC"
+                                            "inject" -> "Inject"
+                                            "auto" -> "Auto-Detect"
+                                            else -> "None"
+                                        }
+                                    }
                                 },
                                 color = MaterialTheme.colorScheme.secondary,
                                 icon = Icons.Outlined.Layers

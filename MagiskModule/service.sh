@@ -1,8 +1,5 @@
 #!/system/bin/sh
-# Snakeloader Frida Boot Service
-# Optimized for Stealth and Power Users
 
-# Function for detailed logging
 log_info() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $1" >> $LOG_FILE
 }
@@ -11,12 +8,10 @@ log_error() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" >> $LOG_FILE
 }
 
-# 1. Warte auf vollständigen System-Boot
 until [ "$(getprop sys.boot_completed)" = "1" ]; do
   sleep 5
 done
 
-# 2. Warte auf Verfügbarkeit der Data-Partition
 until [ -d "/data/adb" ]; do
   sleep 2
 done
@@ -24,14 +19,12 @@ done
 CONFIG_FILE_STEALTH="/data/adb/reshift/config.sh"
 CONFIG_FILE_LEGACY="/data/local/tmp/config.sh"
 
-# 3. Konfiguration laden
 if [ -f "$CONFIG_FILE_STEALTH" ]; then
     . "$CONFIG_FILE_STEALTH"
 elif [ -f "$CONFIG_FILE_LEGACY" ]; then
     . "$CONFIG_FILE_LEGACY"
 fi
 
-# 4. Stealth-Modus evaluieren
 [ -z "$STEALTH_MODE" ] && STEALTH_MODE=0
 
 if [ "$STEALTH_MODE" -eq 1 ]; then
@@ -54,7 +47,6 @@ else
     log_info "Stealth Mode INACTIVE: Using standard parameters ($FRIDA_SERVER_NAME:$FRIDA_PORT)"
 fi
 
-# 5. Berechtigungen sicherstellen
 check_binary() {
     local path=$1
     local name=$2
@@ -67,7 +59,6 @@ check_binary() {
     return 1
 }
 
-# Ensure Server
 if ! check_binary "$FRIDA_PATH" "Server"; then
     log_error "Frida server not found at $FRIDA_PATH. Searching fallback..."
     for ALT_PATH in "/data/local/tmp/frida-server" "/data/adb/reshift/frida-server" "/data/adb/reshift/$FRIDA_SERVER_NAME"; do
@@ -79,7 +70,6 @@ if ! check_binary "$FRIDA_PATH" "Server"; then
     [ ! -f "$FRIDA_PATH" ] && log_error "FATAL: No Frida server binary found" && exit 1
 fi
 
-# Ensure CLI (MANDATORY for RPC)
 CLI_PATH="/data/local/tmp/frida"
 if ! check_binary "$CLI_PATH" "Frida CLI"; then
     log_info "CLI binary not found at $CLI_PATH. Checking inject fallback..."
@@ -89,8 +79,6 @@ if ! check_binary "$CLI_PATH" "Frida CLI"; then
     fi
 fi
 
-# 6. Anti-Anti-Frida: Port & Name Check
-# Falls der Port belegt ist, versuchen wir ihn freizugeben oder loggen es
 if netstat -tuln | grep -q ":$FRIDA_PORT "; then
     log_info "Port $FRIDA_PORT is already in use. Checking if it's an old frida instance..."
     EXISTING_PID=$(pgrep -f "$FRIDA_SERVER_NAME")
@@ -101,20 +89,15 @@ if netstat -tuln | grep -q ":$FRIDA_PORT "; then
     fi
 fi
 
-# 7. Frida Server im unbeschränkten SU-Kontext starten
 log_info "Starting $FRIDA_SERVER_NAME on port $FRIDA_PORT..."
 
-# Erweiterte Stealth-Parameter
-# -l 0.0.0.0: Lauscht auf allen Interfaces (Wichtig für Remote-Debugging)
 setsid nohup "$FRIDA_PATH" -l 0.0.0.0:"$FRIDA_PORT" > /dev/null 2>&1 &
 
-# 8. Verifizierung & Überwachung
 sleep 3
 FINAL_PID=$(pgrep -f "$FRIDA_SERVER_NAME")
 if [ ! -z "$FINAL_PID" ]; then
     log_info "Frida server successfully started with PID $FINAL_PID"
 
-    # Optional: ZygiskFrida Support Check
     if [ -d "/data/adb/modules/zygisk-frida" ]; then
         log_info "ZygiskFrida module detected, ensuring compatibility..."
     fi

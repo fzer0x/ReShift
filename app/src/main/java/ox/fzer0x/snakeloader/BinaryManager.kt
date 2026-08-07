@@ -1,7 +1,6 @@
 package ox.fzer0x.snakeloader
 
 import android.util.Log
-import ox.fzer0x.snakeloader.utils.ProcessMonitor
 import ox.fzer0x.snakeloader.utils.ShellExecutor
 
 class BinaryManager(
@@ -28,11 +27,20 @@ class BinaryManager(
         val cliName = stealthConfig.getBinaryName(StealthConfigManager.DEFAULT_FRIDA_CLI)
         val injectName = stealthConfig.getBinaryName(StealthConfigManager.DEFAULT_FRIDA_INJECT)
 
-        val cliRunning = ProcessMonitor.isProcessRunning(cliName) || ProcessMonitor.isProcessRunning("frida")
-        val injectRunning = ProcessMonitor.isProcessRunning(injectName) || ProcessMonitor.isProcessRunning("frida-inject")
-        val serverRunning = ProcessMonitor.isProcessRunning(serverName) || 
-                           ProcessMonitor.isProcessRunning("frida-server") || 
-                           ProcessMonitor.isProcessRunning("nm-service")
+        // Use more specific process checks to avoid false positives between cli/inject/server
+        val cliRunning = ShellExecutor.executeSimple("pgrep -x $cliName", useRoot = true).trim().isNotEmpty() ||
+                         (cliName != "frida" && ShellExecutor.executeSimple("pgrep -x frida", useRoot = true).trim().isNotEmpty())
+
+        val injectRunning = ShellExecutor.executeSimple("pgrep -x $injectName", useRoot = true).trim().isNotEmpty() ||
+                            (injectName != "frida-inject" && ShellExecutor.executeSimple("pgrep -x frida-inject", useRoot = true).trim().isNotEmpty())
+
+        val port = stealthConfig.getActivePort()
+        val portCheck = ShellExecutor.executeSimple("netstat -tuln | grep :$port", useRoot = true).trim()
+        
+        val serverRunning = ShellExecutor.executeSimple("pgrep -x $serverName", useRoot = true).trim().isNotEmpty() ||
+                           (serverName != "frida-server" && ShellExecutor.executeSimple("pgrep -x frida-server", useRoot = true).trim().isNotEmpty()) ||
+                           (serverName != "nm-service" && ShellExecutor.executeSimple("pgrep -x nm-service", useRoot = true).trim().isNotEmpty()) ||
+                           portCheck.isNotEmpty()
 
         return when {
             cliRunning -> "cli"

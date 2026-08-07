@@ -1,7 +1,7 @@
 id=snakeloader_frida
 name=ReShift Frida Engine
-version=1.0.0
-versionCode=100
+version=1.0.1
+versionCode=101
 author=fzer0x
-description=Industrial Grade Frida Integration for Snakeloader. Supporting Stealth, Zygisk, and Senior-Level RPC.
+description=Frida Integration for ReShift. Supporting Stealth, Zygisk, and RPC.
 ygisk=no

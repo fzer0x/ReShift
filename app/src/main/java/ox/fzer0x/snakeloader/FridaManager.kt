@@ -115,7 +115,7 @@ class FridaManager(
             getenforce
             cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || echo "1"
         """.trimIndent()
-        
+
         val batchResult = executeRootCommand(script)
         val lines = batchResult.lines().filter { it.isNotEmpty() }
         
@@ -574,8 +574,7 @@ class FridaManager(
         return try {
             val scripts = listOf(
                 FridaScript("rpc_handler", loadAssetScript("rpc_handler.js"), 3),
-                FridaScript("memory_dumper", loadAssetScript("Memory_Dumper.js"), 2),
-                FridaScript("csr2_mod", loadAssetScript("csr2_mod_v3.js"), 1)
+                FridaScript("memory_dumper", loadAssetScript("memory_dumper.js"), 2)
             )
             val success = executeMultipleScripts(scripts, packageName, "combined")
             if (success) {

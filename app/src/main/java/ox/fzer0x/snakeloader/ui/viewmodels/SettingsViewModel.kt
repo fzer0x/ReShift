@@ -32,9 +32,6 @@ class SettingsViewModel(
     var isModuleServiceRunning by mutableStateOf(false)
         private set
 
-    var bootLogs by mutableStateOf("")
-        private set
-
     var installationLog by mutableStateOf("")
         private set
 
@@ -51,11 +48,9 @@ class SettingsViewModel(
             if (isModuleInstalled) {
                 moduleVersion = mm.getModuleVersion()
                 isModuleServiceRunning = mm.isServiceRunning()
-                bootLogs = mm.getBootLogs()
             } else {
                 moduleVersion = "Not Installed"
                 isModuleServiceRunning = false
-                bootLogs = ""
             }
         }
     }

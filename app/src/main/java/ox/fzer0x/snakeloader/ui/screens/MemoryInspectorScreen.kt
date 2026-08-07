@@ -365,18 +365,83 @@ private fun RegistryTab(registryInfo: Map<String, Any>?) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item { SectionHeader("ENGINE REGISTRY") }
-            items(registryInfo.toList()) { (key, value) ->
-                OutlinedCard(shape = RoundedCornerShape(8.dp)) {
-                    Row(
-                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = key, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        Text(text = value.toString(), fontSize = 11.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.primary)
+            
+            registryInfo.forEach { (key, value) ->
+                when (value) {
+                    is Map<*, *> -> {
+                        item {
+                            Text(
+                                text = key.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp, start = 4.dp)
+                            )
+                        }
+                        items(value.toList()) { (subKey, subValue) ->
+                            RegistryItem(subKey.toString(), subValue.toString(), isNested = true)
+                        }
+                    }
+                    is List<*> -> {
+                        item {
+                            Text(
+                                text = key.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp, start = 4.dp)
+                            )
+                        }
+                        if (value.isEmpty()) {
+                            item { RegistryItem("None", "-", isNested = true) }
+                        } else {
+                            items(value) { item ->
+                                RegistryItem(item.toString(), "LOADED", isNested = true)
+                            }
+                        }
+                    }
+                    else -> {
+                        item {
+                            RegistryItem(key, value.toString())
+                        }
                     }
                 }
             }
+            
+            item { Spacer(Modifier.height(32.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun RegistryItem(key: String, value: String, isNested: Boolean = false) {
+    Surface(
+        color = if (isNested) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp, 
+            if (isNested) MaterialTheme.colorScheme.outline.copy(alpha = 0.1f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+        ),
+        modifier = if (isNested) Modifier.padding(start = 12.dp) else Modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = key,
+                fontSize = if (isNested) 11.sp else 12.sp,
+                fontWeight = if (isNested) FontWeight.Medium else FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                color = if (isNested) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = value,
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                color = if (isNested) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
+            )
         }
     }
 }

@@ -62,7 +62,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     var isPtraceScopeDisabled by remember { mutableStateOf(false) }
     var isYamaSupported by remember { mutableStateOf(true) }
 
-    var showLogsDialog by remember { mutableStateOf(false) }
     var showStealthWarning by remember { mutableStateOf(false) }
     var showInstallationDialog by remember { mutableStateOf(false) }
 
@@ -308,26 +307,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                         )
 
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(
-                                onClick = { viewModel.installModule(context) },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(Icons.Default.SystemUpdate, null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(if (viewModel.isModuleInstalled) "Update" else "Install")
-                            }
-
-                            OutlinedButton(
-                                onClick = { showLogsDialog = true },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(Icons.Default.Terminal, null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Logs")
-                            }
+                        Button(
+                            onClick = { viewModel.installModule(context) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.SystemUpdate, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (viewModel.isModuleInstalled) "Update" else "Install")
                         }
                     }
                 }
@@ -335,38 +322,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 
             item { Spacer(Modifier.height(32.dp)) }
         }
-    }
-
-    if (showLogsDialog) {
-        AlertDialog(
-            onDismissRequest = { showLogsDialog = false },
-            title = { Text("Module Boot Logs") },
-            text = {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().height(350.dp),
-                    color = Color(0xFF1E1E1E),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    LazyColumn(modifier = Modifier.padding(12.dp)) {
-                        item {
-                            Text(
-                                text = viewModel.bootLogs.ifEmpty { "No logs available." },
-                                color = Color(0xFF4CAF50),
-                                fontSize = 11.sp,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                lineHeight = 14.sp
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showLogsDialog = false }) { Text("Close") }
-            },
-            dismissButton = {
-                TextButton(onClick = { refreshSystemStatus() }) { Text("Refresh") }
-            }
-        )
     }
 
     if (showInstallationDialog) {

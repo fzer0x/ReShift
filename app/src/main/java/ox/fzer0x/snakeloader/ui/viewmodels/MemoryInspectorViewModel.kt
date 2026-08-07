@@ -204,9 +204,10 @@ class MemoryInspectorViewModel(
         } else {
             registryInfo.value = mapOf(
                 "hooks" to hooks.value.map { it.name },
-                "scripts" to listOf("rpc_handler.js", "Memory_Dumper.js", "Godmod_Snake.io.js", "test_basic.js"),
-                "mode" to "Discovery Mode (RPC connecting...)",
-                "message" to "Attempting log-based detection while RPC bridge initializes"
+                "scripts" to listOf("rpc_handler.js", "memory_dumper.js", "core_instrumentation.js"),
+                "mode" to "Discovery Mode (Connecting...)",
+                "bridge" to "TCP:27043",
+                "status" to "Waiting for Frida RPC exports..."
             )
         }
     }

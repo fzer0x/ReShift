@@ -2,6 +2,10 @@
 
 **ReShift** is a high-performance Android instrumentation and security research toolkit. It integrates the power of **Frida** and **Zygisk** into a unified, mobile-first interface designed for advanced dynamic analysis, reversing, and stealthy app research.
 
+<p align="center">
+  <img src="screenshot/screenshot-1.jpg" width="350" alt="ReShift Screenshot">
+</p>
+
 ---
 
 ## 🚀 Key Features

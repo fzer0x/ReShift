@@ -8,10 +8,12 @@ import kotlinx.coroutines.delay
 import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.ModuleManager
 import ox.fzer0x.snakeloader.SettingsManager
+import ox.fzer0x.snakeloader.UpdateManager
 
 class SettingsViewModel(
     val fridaManager: FridaManager,
-    private val settings: SettingsManager
+    private val settings: SettingsManager,
+    val updateManager: UpdateManager
 ) : BaseViewModel() {
 
     private var moduleManager: ModuleManager? = null

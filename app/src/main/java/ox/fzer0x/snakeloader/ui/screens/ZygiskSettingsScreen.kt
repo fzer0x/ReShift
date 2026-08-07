@@ -145,14 +145,14 @@ fun ZygiskSettingsScreen(
                         
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Outlined.Warning,
+                                Icons.Outlined.Info,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Requires module update & reboot to take effect.",
+                                "Zygisk Early stage injection for stealth. Start target app normally, no need to launch Reshift.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

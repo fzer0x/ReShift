@@ -15,6 +15,7 @@ val appModule = module {
     single { ScriptManager(get()) }
     single { ZygiskManager(get(), get(), get()) }
     single { ModuleManager(get(), get()) }
+    single { UpdateManager(get()) }
     
-    viewModel { MainViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { MainViewModel(get(), get(), get(), get(), get(), get(), get()) }
 }

@@ -320,6 +320,34 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                 }
             }
 
+            item {
+                SectionHeader("App Update")
+                ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Check for ReShift app updates on GitHub.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Button(
+                            onClick = { 
+                                scope.launch {
+                                    viewModel.updateManager.checkForUpdates()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
+                        ) {
+                            Icon(Icons.Default.Update, null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Check for Updates")
+                        }
+                    }
+                }
+            }
+
             item { Spacer(Modifier.height(32.dp)) }
         }
     }

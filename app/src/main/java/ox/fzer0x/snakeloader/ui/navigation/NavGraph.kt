@@ -17,6 +17,7 @@ import ox.fzer0x.snakeloader.GitHubApiService
 import ox.fzer0x.snakeloader.ScriptManager
 import ox.fzer0x.snakeloader.SettingsManager
 import ox.fzer0x.snakeloader.ZygiskManager
+import ox.fzer0x.snakeloader.UpdateManager
 import ox.fzer0x.snakeloader.ui.screens.*
 import ox.fzer0x.snakeloader.ui.viewmodels.AppsViewModel
 import ox.fzer0x.snakeloader.ui.viewmodels.StatusViewModel
@@ -65,6 +66,7 @@ fun ReShiftNavGraph(
     scriptManager: ScriptManager,
     settingsManager: SettingsManager,
     zygiskManager: ZygiskManager,
+    updateManager: UpdateManager,
     modifier: Modifier = Modifier
 ) {
     val statusViewModel: StatusViewModel = viewModel(
@@ -89,7 +91,7 @@ fun ReShiftNavGraph(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return SettingsViewModel(fridaManager, settingsManager) as T
+                return SettingsViewModel(fridaManager, settingsManager, updateManager) as T
             }
         }
     )

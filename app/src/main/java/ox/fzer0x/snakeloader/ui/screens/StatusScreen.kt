@@ -1,5 +1,6 @@
 package ox.fzer0x.snakeloader.ui.screens
 
+import android.content.Intent
 import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toUri
 import kotlinx.coroutines.launch
 import ox.fzer0x.snakeloader.AppInfo
 import ox.fzer0x.snakeloader.FridaManager
@@ -111,6 +113,17 @@ fun StatusScreen(
                                 onNavigateToSettings()
                             },
                             leadingIcon = { Icon(Icons.Default.Settings, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Join Community") },
+                            onClick = {
+                                showMenu = false
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, "https://t.me/+1FZrr4SqgMg1MDky".toUri())
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {}
+                            },
+                            leadingIcon = { Icon(Icons.Default.Group, null) }
                         )
                     }
                 }
@@ -239,7 +252,7 @@ fun StatusScreen(
                     horizontalAlignment = Alignment.Start
                 ) {
                     Text(
-                        "ReShift 1.0.0",
+                        "ReShift 1.0.1",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.outline
                     )

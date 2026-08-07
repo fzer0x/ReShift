@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import ox.fzer0x.snakeloader.LogManager
 import java.io.File
 import java.text.SimpleDateFormat
@@ -194,6 +195,17 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
                                     onNavigateToSettings()
                                 },
                                 leadingIcon = { Icon(Icons.Default.Settings, null) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Join Community") },
+                                onClick = {
+                                    showMenu = false
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, "https://t.me/+1FZrr4SqgMg1MDky".toUri())
+                                        context.startActivity(intent)
+                                    } catch (_: Exception) {}
+                                },
+                                leadingIcon = { Icon(Icons.Default.Group, null) }
                             )
                         }
                     }

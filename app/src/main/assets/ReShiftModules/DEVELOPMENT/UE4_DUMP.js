@@ -1,3 +1,7 @@
+// UE4 DUMPER
+// Unreal Engine 4 Dumper for Frida
+// Unknown author, 2024
+
 console.log("[***] UE4_DUMP.js loaded and script started [***]");
 
 var moduleBase;

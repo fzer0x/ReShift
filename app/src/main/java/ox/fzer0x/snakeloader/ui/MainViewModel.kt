@@ -7,6 +7,7 @@ import ox.fzer0x.snakeloader.GitHubApiService
 import ox.fzer0x.snakeloader.ScriptManager
 import ox.fzer0x.snakeloader.SettingsManager
 import ox.fzer0x.snakeloader.ZygiskManager
+import ox.fzer0x.snakeloader.UpdateManager
 
 class MainViewModel(
     val fridaManager: FridaManager,
@@ -14,7 +15,8 @@ class MainViewModel(
     val codeShareApiService: CodeShareApiService,
     val scriptManager: ScriptManager,
     val settingsManager: SettingsManager,
-    val zygiskManager: ZygiskManager
+    val zygiskManager: ZygiskManager,
+    val updateManager: UpdateManager
 ) : ViewModel() {
 
     override fun onCleared() {

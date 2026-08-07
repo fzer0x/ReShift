@@ -44,11 +44,36 @@ class ModuleManager(private val context: Context, private val settings: Settings
     }
 
     fun getAssetModuleVersion(): String {
-        return "1.0.0"
+        return readPropFromAsset("version") ?: "1.0.0"
     }
 
     fun getAssetModuleVersionCode(): Int {
-        return 100
+        return readPropFromAsset("versionCode")?.toIntOrNull() ?: 100
+    }
+
+    private fun readPropFromAsset(key: String): String? {
+        try {
+            context.assets.open(MODULE_ASSET_NAME).use { inputStream ->
+                val zipInputStream = java.util.zip.ZipInputStream(inputStream)
+                var entry = zipInputStream.nextEntry
+                while (entry != null) {
+                    if (entry.name == "module.prop") {
+                        val reader = zipInputStream.bufferedReader()
+                        var line: String?
+                        while (reader.readLine().also { line = it } != null) {
+                            if (line?.startsWith("$key=") == true) {
+                                return line.substringAfter('=').trim()
+                            }
+                        }
+                        break
+                    }
+                    entry = zipInputStream.nextEntry
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read $key from asset", e)
+        }
+        return null
     }
 
     fun isServiceRunning(): Boolean {

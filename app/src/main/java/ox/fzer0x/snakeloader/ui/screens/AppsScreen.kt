@@ -1,6 +1,7 @@
 package ox.fzer0x.snakeloader.ui.screens
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -29,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ox.fzer0x.snakeloader.AppInfo
@@ -78,6 +80,17 @@ fun AppsScreen(
                                 onNavigateToSettings()
                             },
                             leadingIcon = { Icon(Icons.Default.Settings, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Join Community") },
+                            onClick = {
+                                showMenu = false
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, "https://t.me/+1FZrr4SqgMg1MDky".toUri())
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {}
+                            },
+                            leadingIcon = { Icon(Icons.Default.Group, null) }
                         )
                     }
                 }

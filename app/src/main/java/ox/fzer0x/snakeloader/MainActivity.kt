@@ -1,11 +1,11 @@
 package ox.fzer0x.snakeloader
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
@@ -31,6 +31,8 @@ import ox.fzer0x.snakeloader.ui.navigation.Screen
 import ox.fzer0x.snakeloader.ui.navigation.ReShiftNavGraph
 import ox.fzer0x.snakeloader.ui.theme.ReShiftTheme
 import ox.fzer0x.snakeloader.ui.MainViewModel
+import ox.fzer0x.snakeloader.ui.components.CommunityDialog
+import ox.fzer0x.snakeloader.ui.components.AppUpdateDialog
 import org.koin.androidx.compose.koinViewModel
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.activity.result.contract.ActivityResultContracts
@@ -61,18 +63,21 @@ class MainActivity : ComponentActivity() {
 
             ReShiftTheme {
                 val viewModel: MainViewModel = koinViewModel()
+                val scope = rememberCoroutineScope()
                 val fridaManager = viewModel.fridaManager
                 val githubApiService = viewModel.githubApiService
                 val codeShareApiService = viewModel.codeShareApiService
                 val scriptManager = viewModel.scriptManager
                 val settingsManager = viewModel.settingsManager
                 val zygiskManager = viewModel.zygiskManager
+                val updateManager = viewModel.updateManager
 
                 var showModuleDialog by remember { mutableStateOf<ModuleDialogType?>(null) }
                 var showTelegramDialog by remember { 
                     mutableStateOf(!settingsManager.isTelegramDialogDismissed) 
                 }
-                var dontShowAgain by remember { mutableStateOf(false) }
+
+                val updateState by updateManager.updateState.collectAsState()
 
                 LaunchedEffect(Unit) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -93,15 +98,20 @@ class MainActivity : ComponentActivity() {
                         kotlinx.coroutines.delay(2000)
                         
                         val moduleManager = ModuleManager(this@MainActivity, settingsManager)
-                        if (!moduleManager.isModuleInstalled()) {
+                        val isInstalled = moduleManager.isModuleInstalled()
+                        val installedVersionCode = moduleManager.getModuleVersionCode()
+                        val assetVersionCode = moduleManager.getAssetModuleVersionCode()
+                        
+                        Log.d("MainActivity", "Module check: installed=$isInstalled, vCode=$installedVersionCode, assetVCode=$assetVersionCode")
+
+                        if (!isInstalled) {
                             showModuleDialog = ModuleDialogType.REQUIRED
-                        } else {
-                            val installedVersionCode = moduleManager.getModuleVersionCode()
-                            val assetVersionCode = moduleManager.getAssetModuleVersionCode()
-                            if (installedVersionCode in 1 until assetVersionCode) {
-                                showModuleDialog = ModuleDialogType.UPDATE
-                            }
+                        } else if (installedVersionCode < assetVersionCode) {
+                            showModuleDialog = ModuleDialogType.UPDATE
                         }
+                        
+                        // Check for App Updates
+                        updateManager.checkForUpdates()
                     }
                 }
 
@@ -160,6 +170,7 @@ class MainActivity : ComponentActivity() {
                         scriptManager = scriptManager,
                         settingsManager = settingsManager,
                         zygiskManager = zygiskManager,
+                        updateManager = updateManager,
                         modifier = Modifier.padding(innerPadding)
                     )
 
@@ -170,8 +181,8 @@ class MainActivity : ComponentActivity() {
                             title = { Text(if (type == ModuleDialogType.REQUIRED) "Module Required" else "Update Available") },
                             text = { 
                                 Text(if (type == ModuleDialogType.REQUIRED) 
-                                    "The ReShift Root module is not installed. Please install it in Settings to enable all features." 
-                                    else "A new version of the ReShift Root module is available. Please update it in Settings.") 
+                                    "ReShift Root module is not installed. Please install it in Settings to enable all features."
+                                    else "A new version of ReShift Root module is available. Please update it in Settings.")
                             },
                             confirmButton = {
                                 Button(onClick = {
@@ -190,48 +201,35 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (showTelegramDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showTelegramDialog = false },
-                            icon = { Icon(Icons.Default.Group, null, tint = MaterialTheme.colorScheme.primary) },
-                            title = { Text("Join our Community") },
-                            text = {
-                                Column {
-                                    Text("Join our Telegram channel for the latest modules, updates, and support!")
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.clickable { dontShowAgain = !dontShowAgain }
-                                    ) {
-                                        Checkbox(
-                                            checked = dontShowAgain,
-                                            onCheckedChange = { dontShowAgain = it }
-                                        )
-                                        Text("Don't show again", style = MaterialTheme.typography.bodyMedium)
-                                    }
-                                }
+                        CommunityDialog(
+                            onDismiss = { dontShow ->
+                                if (dontShow) settingsManager.isTelegramDialogDismissed = true
+                                showTelegramDialog = false
                             },
-                            confirmButton = {
-                                Button(onClick = {
-                                    if (dontShowAgain) settingsManager.isTelegramDialogDismissed = true
-                                    showTelegramDialog = false
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW, "https://t.me/+5Z7yekVc3uBkYWMy".toUri())
-                                        startActivity(intent)
-                                    } catch (_: Exception) {}
-                                }) {
-                                    Text("Join Channel")
-                                }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = {
-                                    if (dontShowAgain) settingsManager.isTelegramDialogDismissed = true
-                                    showTelegramDialog = false
-                                }) {
-                                    Text("Later")
-                                }
+                            onJoin = { dontShow ->
+                                if (dontShow) settingsManager.isTelegramDialogDismissed = true
+                                showTelegramDialog = false
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, "https://t.me/+1FZrr4SqgMg1MDky".toUri())
+                                    startActivity(intent)
+                                } catch (_: Exception) {}
                             }
                         )
                     }
+
+                    AppUpdateDialog(
+                        state = updateState,
+                        onDownload = {
+                            (updateState as? UpdateManager.UpdateState.UpdateAvailable)?.let {
+                                scope.launch {
+                                    updateManager.downloadAndInstall(it.downloadUrl)
+                                }
+                            }
+                        },
+                        onDismiss = {
+                            updateManager.resetState()
+                        }
+                    )
                 }
             }
         }

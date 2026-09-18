@@ -252,7 +252,7 @@ fun StatusScreen(
                     horizontalAlignment = Alignment.Start
                 ) {
                     Text(
-                        "ReShift 1.0.1",
+                        "ReShift 1.0.2",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.outline
                     )

@@ -66,7 +66,7 @@ Managed via `StealthConfigManager`, the toolkit generates a `config.sh` used by 
 1. **Install Magisk/KSU/KSU Next:** Ensure your device is rooted.
 2. **Flash the Module:** Install the ReShift Magisk/KSU module via the app or Magisk Manager.
 3. **Configure Zygisk:** Enable Zygisk in Magisk settings and select your target apps in the ReShift UI.
-4. **Inject & Analyze:** Choose a script from the repository or write your own, and hit **Start**.
+4. **Inject & Analyze:** Choose a script from the repository or write your own, start app.
 
 ---
 

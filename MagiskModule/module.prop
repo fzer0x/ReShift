@@ -1,7 +1,7 @@
 id=snakeloader_frida
-name=ReShift Frida Engine
-version=1.0.1
-versionCode=101
+name=ReShift
+version=1.0.2
+versionCode=102
 author=fzer0x
 description=Frida Integration for ReShift. Supporting Stealth, Zygisk, and RPC.
-ygisk=no
+zygisk=yes

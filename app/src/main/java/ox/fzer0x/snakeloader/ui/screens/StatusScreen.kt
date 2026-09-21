@@ -21,27 +21,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import ox.fzer0x.snakeloader.AppInfo
 import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.ScriptManager
-import ox.fzer0x.snakeloader.ui.components.InfoCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
 import ox.fzer0x.snakeloader.ui.components.SectionHeader
 import ox.fzer0x.snakeloader.ui.components.StatusRow
-import ox.fzer0x.snakeloader.ui.components.StatusBadge
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.theme.SuccessGreen
+import ox.fzer0x.snakeloader.ui.theme.WarningOrange
 import ox.fzer0x.snakeloader.ui.viewmodels.StatusViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,29 +62,10 @@ fun StatusScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = CircleShape,
-                            color = if (viewModel.fridaRunning) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(10.dp)
-                        ) {}
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = buildAnnotatedString {
-                                withStyle(SpanStyle(fontWeight = FontWeight.ExtraLight, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))) {
-                                    append("RE")
-                                }
-                                withStyle(SpanStyle(fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)) {
-                                    append("SHIFT")
-                                }
-                            },
-                            style = MaterialTheme.typography.titleLarge,
-                            letterSpacing = 3.sp
-                        )
-                    }
-                },
+            ReShiftTopAppBar(
+                title = "ReShift",
+                isBrandTitle = true,
+                isActiveStatus = viewModel.fridaRunning,
                 actions = {
                     IconButton(onClick = { viewModel.refreshStatus(context) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
@@ -151,15 +130,12 @@ fun StatusScreen(
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     SectionHeader("System Environment")
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                    ReShiftCard {
+                        Column(modifier = Modifier.padding(14.dp)) {
                             StatusRow(
                                 label = "Frida Service",
                                 value = if (viewModel.isLoading) "..." else if (viewModel.fridaRunning) "Active" else "Inactive",
-                                color = if (viewModel.fridaRunning) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                                color = if (viewModel.fridaRunning) SuccessGreen else MaterialTheme.colorScheme.error,
                                 icon = Icons.Outlined.Dns
                             )
                             if (viewModel.fridaRunning) {
@@ -167,11 +143,15 @@ fun StatusScreen(
                                     "Version ${viewModel.fridaVersion}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(start = 24.dp)
+                                    modifier = Modifier.padding(start = 28.dp)
                                 )
                             }
                             
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            )
                             
                             StatusRow(
                                 label = "Injection Mode",
@@ -198,12 +178,16 @@ fun StatusScreen(
                                 icon = Icons.Outlined.Layers
                             )
 
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 12.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            )
 
                             StatusRow(
                                 label = "Detection Stealth",
                                 value = if (viewModel.isStealthModeEnabled) "Active" else "Default",
-                                color = if (viewModel.isStealthModeEnabled) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (viewModel.isStealthModeEnabled) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
                                 icon = Icons.Outlined.AdminPanelSettings
                             )
                         }
@@ -214,18 +198,21 @@ fun StatusScreen(
             item {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     SectionHeader("Security Configuration")
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         SecurityInfoBox(
                             modifier = Modifier.weight(1f),
                             title = "Root Access",
                             value = if (viewModel.hasRoot) "Granted" else "Restricted",
-                            color = if (viewModel.hasRoot) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                            color = if (viewModel.hasRoot) SuccessGreen else MaterialTheme.colorScheme.error
                         )
                         SecurityInfoBox(
                             modifier = Modifier.weight(1f),
                             title = "SELinux",
                             value = if (viewModel.isSelinuxPermissive) "Permissive" else "Enforcing",
-                            color = if (viewModel.isSelinuxPermissive) Color(0xFFFF9800) else Color(0xFF4CAF50)
+                            color = if (viewModel.isSelinuxPermissive) WarningOrange else SuccessGreen
                         )
                     }
                 }
@@ -252,9 +239,10 @@ fun StatusScreen(
                     horizontalAlignment = Alignment.Start
                 ) {
                     Text(
-                        "ReShift 1.0.2",
+                        "ReShift 1.1.0",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.outline,
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
                         "Magisk Module v${viewModel.moduleVersion}",
@@ -287,22 +275,25 @@ fun QuickActionsRow(
             AssistChip(
                 onClick = onStartFrida,
                 enabled = !isLoading && hasRoot,
-                label = { Text(if (isFridaRunning) "Restart Frida" else "Start Frida") },
-                leadingIcon = { Icon(Icons.Default.PowerSettingsNew, null, modifier = Modifier.size(16.dp)) }
+                label = { Text(if (isFridaRunning) "Restart Frida" else "Start Frida", fontWeight = FontWeight.Medium) },
+                leadingIcon = { Icon(Icons.Default.PowerSettingsNew, null, modifier = Modifier.size(16.dp)) },
+                shape = ReShiftChipShape
             )
         }
         item {
             AssistChip(
                 onClick = onOpenToolbox,
-                label = { Text("Toolbox") },
-                leadingIcon = { Icon(Icons.Default.Build, null, modifier = Modifier.size(16.dp)) }
+                label = { Text("Toolbox", fontWeight = FontWeight.Medium) },
+                leadingIcon = { Icon(Icons.Default.Build, null, modifier = Modifier.size(16.dp)) },
+                shape = ReShiftChipShape
             )
         }
         item {
             AssistChip(
                 onClick = onOpenSettings,
-                label = { Text("Settings") },
-                leadingIcon = { Icon(Icons.Default.Settings, null, modifier = Modifier.size(16.dp)) }
+                label = { Text("Settings", fontWeight = FontWeight.Medium) },
+                leadingIcon = { Icon(Icons.Default.Settings, null, modifier = Modifier.size(16.dp)) },
+                shape = ReShiftChipShape
             )
         }
     }
@@ -315,16 +306,22 @@ fun SecurityInfoBox(
     value: String,
     color: Color
 ) {
-    OutlinedCard(modifier = modifier, shape = RoundedCornerShape(8.dp)) {
-        Column(modifier = Modifier.padding(10.dp)) {
+    ReShiftCard(modifier = modifier) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.height(4.dp))
             Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = color)
         }
     }
 }
 
 @Composable
-fun RecentAppListItem(app: AppInfo, scriptManager: ScriptManager, fridaManager: FridaManager, scope: kotlinx.coroutines.CoroutineScope) {
+fun RecentAppListItem(
+    app: AppInfo,
+    scriptManager: ScriptManager,
+    fridaManager: FridaManager,
+    scope: CoroutineScope
+) {
     val assignedCount = remember(app.packageName) { scriptManager.getAssignmentsForApp(app.packageName).size }
     val iconBitmap = remember(app.packageName) { 
         try {
@@ -334,7 +331,7 @@ fun RecentAppListItem(app: AppInfo, scriptManager: ScriptManager, fridaManager: 
         }
     }
 
-    OutlinedCard(
+    ReShiftCard(
         onClick = {
             scope.launch {
                 val scripts = scriptManager.getAssignmentsForApp(app.packageName)
@@ -348,12 +345,10 @@ fun RecentAppListItem(app: AppInfo, scriptManager: ScriptManager, fridaManager: 
                     }
                 }
             }
-        },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp)
+        }
     ) {
         Row(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (iconBitmap != null) {
@@ -361,15 +356,15 @@ fun RecentAppListItem(app: AppInfo, scriptManager: ScriptManager, fridaManager: 
                     bitmap = iconBitmap,
                     contentDescription = null,
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(4.dp)),
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp)),
+                        .size(38.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Android, null, modifier = Modifier.size(20.dp), tint = Color(0xFF3DDC84))
@@ -388,6 +383,7 @@ fun RecentAppListItem(app: AppInfo, scriptManager: ScriptManager, fridaManager: 
                     text = "$assignedCount scripts",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }

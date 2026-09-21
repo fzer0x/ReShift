@@ -43,6 +43,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
 
 class MainActivity : ComponentActivity() {
 
@@ -115,9 +117,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LaunchedEffect(fridaManager) {
-                    ProcessLifecycleOwner.get().lifecycle.addObserver(fridaManager)
-                }
+
 
                 if ((settingsManager.isOverlayEnabled || settingsManager.isLogcatOverlayEnabled) && Settings.canDrawOverlays(this)) {
                     startService(Intent(this, OverlayService::class.java))
@@ -185,18 +185,25 @@ class MainActivity : ComponentActivity() {
                                     else "A new version of ReShift Root module is available. Please update it in Settings.")
                             },
                             confirmButton = {
-                                Button(onClick = {
-                                    showModuleDialog = null
-                                    navController.navigate(Screen.Settings.route)
-                                }) {
+                                Button(
+                                    onClick = {
+                                        showModuleDialog = null
+                                        navController.navigate(Screen.Settings.route)
+                                    },
+                                    shape = ReShiftButtonShape
+                                ) {
                                     Text("Go to Settings")
                                 }
                             },
                             dismissButton = {
-                                TextButton(onClick = { showModuleDialog = null }) {
+                                TextButton(
+                                    onClick = { showModuleDialog = null },
+                                    shape = ReShiftButtonShape
+                                ) {
                                     Text("Later")
                                 }
-                            }
+                            },
+                            shape = ReShiftDialogShape
                         )
                     }
 

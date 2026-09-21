@@ -21,7 +21,13 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.ScriptManager
-import ox.fzer0x.snakeloader.ui.components.*
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
+import ox.fzer0x.snakeloader.ui.components.SectionHeader
+import ox.fzer0x.snakeloader.ui.components.LaunchParametersSection
 import ox.fzer0x.snakeloader.ui.viewmodels.AppDetailsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,18 +69,10 @@ fun AppDetailsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text(appLabel, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(packageName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                }
+            ReShiftTopAppBar(
+                title = appLabel,
+                subtitle = packageName,
+                onBack = onBack
             )
         },
         floatingActionButton = {
@@ -100,10 +98,7 @@ fun AppDetailsScreen(
             
             if (assignedScripts.isEmpty()) {
                 item {
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
+                    ReShiftCard {
                         Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
                             Text(
                                 "No modules assigned to this app.",
@@ -115,15 +110,12 @@ fun AppDetailsScreen(
                 }
             } else {
                 items(assignedScripts) { script ->
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
+                    ReShiftCard {
                         ListItem(
                             headlineContent = { Text(script.name, fontWeight = FontWeight.Bold) },
                             supportingContent = { 
                                 Column {
-                                    Text(script.repository, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
+                                    Text(script.repository, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
                                     if (!script.description.isNullOrBlank()) {
                                         Spacer(Modifier.height(4.dp))
                                         Text(
@@ -168,11 +160,11 @@ fun AppDetailsScreen(
                 Button(
                     onClick = { showAddDialog = true },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 ) {
                     Icon(Icons.Default.Add, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Add Module")
+                    Text("Add Module", fontWeight = FontWeight.Bold)
                 }
             }
             
@@ -182,7 +174,7 @@ fun AppDetailsScreen(
         if (showAddDialog) {
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
-                title = { Text("Assign Module") },
+                title = { Text("Assign Module", fontWeight = FontWeight.Bold) },
                 text = {
                     val available = allScripts.filter { it.id !in assignedScripts.map { s -> s.id } }
                     if (available.isEmpty()) {
@@ -198,13 +190,13 @@ fun AppDetailsScreen(
                                             viewModel.assignScript(script.id)
                                             showAddDialog = false
                                         },
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = ReShiftChipShape,
                                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                                 ) {
                                     Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                         Icon(Icons.Default.Extension, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
                                         Spacer(Modifier.width(12.dp))
-                                        Text(script.name, style = MaterialTheme.typography.bodyMedium)
+                                        Text(script.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
                                     }
                                 }
                             }
@@ -212,8 +204,9 @@ fun AppDetailsScreen(
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = { showAddDialog = false }) { Text("Cancel") }
-                }
+                    TextButton(onClick = { showAddDialog = false }, shape = ReShiftButtonShape) { Text("Cancel") }
+                },
+                shape = ReShiftDialogShape
             )
         }
     }

@@ -9,7 +9,9 @@ val appModule = module {
     single { SettingsManager(get()) }
     single { StealthConfigManager(get(), get()) }
     single { BinaryManager(get(), get()) }
-    single { FridaManager(get(), get(), get()) }
+    single { DynamicUiManager() }
+    single { StalkerManager() }
+    single { FridaManager(get(), get(), get(), get(), get(), get()) }
     single { GitHubApiService(get()) }
     single { CodeShareApiService(get()) }
     single { ScriptManager(get()) }

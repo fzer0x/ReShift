@@ -3,7 +3,6 @@ package ox.fzer0x.snakeloader.ui.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material3.*
@@ -11,7 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -30,7 +28,7 @@ fun CommunityDialog(
 
     Dialog(onDismissRequest = { onDismiss(dontShowAgain) }) {
         Surface(
-            shape = RoundedCornerShape(28.dp),
+            shape = ReShiftDialogShape,
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
             modifier = Modifier.width(320.dp)
@@ -39,23 +37,22 @@ fun CommunityDialog(
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Icon in a styled circle
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    modifier = Modifier.size(72.dp)
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    modifier = Modifier.size(68.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Group,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 
                 Text(
                     text = buildAnnotatedString {
@@ -71,24 +68,23 @@ fun CommunityDialog(
                     textAlign = TextAlign.Center
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    text = "Join Telegram for community support, chat and script sharing!",
+                    text = "Join Telegram for community support, live chat and script sharing!",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp
                 )
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 
-                // Don't show again row - Styled more subtly
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(ReShiftChipShape)
                         .clickable { dontShowAgain = !dontShowAgain }
                         .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.Center
@@ -110,7 +106,6 @@ fun CommunityDialog(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Buttons
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -118,16 +113,16 @@ fun CommunityDialog(
                     Button(
                         onClick = { onJoin(dontShowAgain) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = ReShiftButtonShape,
                         contentPadding = PaddingValues(vertical = 12.dp)
                     ) {
-                        Text("Join Channel", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Join Channel", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     }
                     
                     TextButton(
                         onClick = { onDismiss(dontShowAgain) },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
+                        shape = ReShiftButtonShape
                     ) {
                         Text(
                             "Later", 

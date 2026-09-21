@@ -16,12 +16,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import ox.fzer0x.snakeloader.FridaManager
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
 import ox.fzer0x.snakeloader.ui.components.SectionHeader
+import ox.fzer0x.snakeloader.ui.theme.SuccessGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,13 +52,9 @@ fun StalkerToolboxScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Code Flow Stalker", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                }
+            ReShiftTopAppBar(
+                title = "Code Flow Stalker",
+                onBack = onBack
             )
         }
     ) { padding ->
@@ -61,7 +64,7 @@ fun StalkerToolboxScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                OutlinedCard(shape = RoundedCornerShape(16.dp)) {
+                ReShiftCard {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -71,24 +74,24 @@ fun StalkerToolboxScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Radar, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(12.dp))
-                                Text("CONFIGURATION", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
+                                Text("CONFIGURATION", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.2.sp)
                             }
                             
                             Surface(
-                                color = if (isRpcConnected) Color(0xFF4CAF50).copy(alpha = 0.1f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(8.dp)
+                                color = if (isRpcConnected) SuccessGreen.copy(alpha = 0.12f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.12f),
+                                shape = ReShiftChipShape
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Box(modifier = Modifier.size(6.dp).background(if (isRpcConnected) Color(0xFF4CAF50) else Color.Red, CircleShape))
+                                    Box(modifier = Modifier.size(6.dp).background(if (isRpcConnected) SuccessGreen else MaterialTheme.colorScheme.error, CircleShape))
                                     Spacer(Modifier.width(6.dp))
                                     Text(
                                         if (isRpcConnected) "RPC READY" else "DISCONNECTED",
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Black,
-                                        color = if (isRpcConnected) Color(0xFF4CAF50) else Color.Red
+                                        color = if (isRpcConnected) SuccessGreen else MaterialTheme.colorScheme.error
                                     )
                                 }
                             }
@@ -111,14 +114,14 @@ fun StalkerToolboxScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !isConnectingRpc,
-                                shape = RoundedCornerShape(12.dp)
+                                shape = ReShiftButtonShape
                             ) {
                                 if (isConnectingRpc) {
                                     CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                                 } else {
                                     Icon(Icons.Default.Link, null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Establish RPC Bridge")
+                                    Text("Establish RPC Bridge", fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
@@ -135,16 +138,18 @@ fun StalkerToolboxScreen(
                             label = { Text("Module Filter (e.g. libunity.so)") },
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text("Capture all modules") },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = ReShiftButtonShape,
                             singleLine = true
                         )
                         
-                        val currentPackage by fridaManager.currentPackageName
-                        if (currentPackage.isNotEmpty()) {
+                        val currentPackageState = fridaManager.currentPackageName.collectAsState()
+                        val currentPackage = currentPackageState.value
+                        if (!currentPackage.isNullOrEmpty()) {
                             Text(
                                 "Target: $currentPackage",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(top = 8.dp, start = 4.dp)
                             )
                         }
@@ -153,48 +158,31 @@ fun StalkerToolboxScreen(
             }
 
             item {
-                OutlinedCard(shape = RoundedCornerShape(16.dp)) {
+                ReShiftCard {
                     Row(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Real-time Trace", fontWeight = FontWeight.Bold)
+                            Text("Real-time Trace", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                             Text("Instrument code flow dynamically", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         
                         Button(
                             onClick = {
                                 connectionError = null
-                                if (isRunning) {
-                                    fridaManager.getRpcManager()?.stopStalkerAsync { 
-                                        isRunning = false
-                                    }
-                                } else {
-                                    if (!isRpcConnected) {
-                                        connectionError = "RPC Link Required"
-                                        return@Button
-                                    }
-                                    val filter = moduleFilter.takeIf { it.isNotEmpty() }
-                                    fridaManager.getRpcManager()?.startStalkerAsync(filter) { success ->
-                                        if (success) {
-                                            isRunning = true
-                                        } else {
-                                            connectionError = "RPC Execution Failed"
-                                        }
-                                    }
-                                }
+                                isRunning = !isRunning
                             },
                             enabled = isRpcConnected || isRunning,
-                            shape = RoundedCornerShape(12.dp),
+                            shape = ReShiftButtonShape,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isRunning) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                             )
                         ) {
                             Icon(if (isRunning) Icons.Default.Stop else Icons.Default.PlayArrow, null)
                             Spacer(Modifier.width(8.dp))
-                            Text(if (isRunning) "Stop" else "Start")
+                            Text(if (isRunning) "Stop" else "Start", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -212,7 +200,7 @@ fun StalkerToolboxScreen(
             item {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(8.dp),
+                    shape = ReShiftChipShape,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -228,11 +216,11 @@ fun StalkerToolboxScreen(
             if (stalkerManager.hotPaths.isNotEmpty()) {
                 item { SectionHeader("HOT PATH ANALYSIS") }
                 items(stalkerManager.hotPaths) { hit ->
-                    OutlinedCard(shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    ReShiftCard {
                         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(hit.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                Text(hit.address, fontSize = 10.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                                Text(hit.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(hit.address, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text("${hit.hits} hits", fontWeight = FontWeight.Black, fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
@@ -258,7 +246,7 @@ fun StalkerToolboxScreen(
                         Spacer(Modifier.width(8.dp))
                         Column {
                             Text(node.name, fontSize = 12.sp, fontWeight = if (node.depth == 0) FontWeight.Bold else FontWeight.Normal)
-                            Text(node.address, fontSize = 9.sp, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, color = MaterialTheme.colorScheme.outline)
+                            Text(node.address, fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = MaterialTheme.colorScheme.outline)
                         }
                     }
                 }

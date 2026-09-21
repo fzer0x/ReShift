@@ -2,7 +2,7 @@ package ox.fzer0x.snakeloader.utils
 
 import android.util.Log
 import kotlinx.coroutines.delay
-import ox.fzer0x.snakeloader.utils.ShellExecutor
+import java.util.concurrent.ConcurrentHashMap
 
 object ProcessMonitor {
     private const val TAG = "ProcessMonitor"
@@ -10,11 +10,16 @@ object ProcessMonitor {
     private val POLL_INTERVALS = longArrayOf(100, 200, 400, 800, 1600, 3200, 5000)
     private const val MAX_POLL_INTERVAL = 5000L
 
-    private val processStateCache = mutableMapOf<String, Boolean>()
-    private val allRunningProcesses = mutableSetOf<String>()
+    private val processStateCache = ConcurrentHashMap<String, Boolean>()
+    private val allRunningProcesses = ConcurrentHashMap.newKeySet<String>()
+
+    @Volatile
     private var lastPollTime = 0L
+
+    @Volatile
     private var lastFullRefreshTime = 0L
 
+    @Synchronized
     fun refreshAllProcesses(force: Boolean = false) {
         val currentTime = System.currentTimeMillis()
         if (!force && currentTime - lastFullRefreshTime < 2000) return
@@ -23,17 +28,19 @@ object ProcessMonitor {
             val result = ShellExecutor.execute("ps -A", useRoot = true)
             if (result.isSuccess) {
                 val lines = result.stdout.lines().drop(1)
-                allRunningProcesses.clear()
+                val newProcesses = mutableSetOf<String>()
                 lines.forEach { line ->
                     val parts = line.trim().split(Regex("\\s+"))
                     if (parts.size >= 9) {
                         val name = parts.last()
-                        if (name.isNotEmpty()) allRunningProcesses.add(name)
+                        if (name.isNotEmpty()) newProcesses.add(name)
                     } else if (parts.isNotEmpty()) {
                         val name = parts.last()
-                        allRunningProcesses.add(name)
+                        if (name.isNotEmpty()) newProcesses.add(name)
                     }
                 }
+                allRunningProcesses.clear()
+                allRunningProcesses.addAll(newProcesses)
                 lastFullRefreshTime = currentTime
                 Log.d(TAG, "Full process refresh completed: ${allRunningProcesses.size} processes found")
             }
@@ -68,7 +75,8 @@ object ProcessMonitor {
     private fun checkInCache(processName: String): Boolean {
         if (allRunningProcesses.contains(processName)) return true
         
-        return allRunningProcesses.any { 
+        val snapshot = allRunningProcesses.toList()
+        return snapshot.any { 
             it == processName || 
             it.endsWith("/$processName") || 
             (it.startsWith("/") && it.substringAfterLast("/") == processName)
@@ -150,7 +158,9 @@ object ProcessMonitor {
 
     fun clearCache() {
         processStateCache.clear()
+        allRunningProcesses.clear()
         lastPollTime = 0L
+        lastFullRefreshTime = 0L
         Log.d(TAG, "Process state cache cleared")
     }
 

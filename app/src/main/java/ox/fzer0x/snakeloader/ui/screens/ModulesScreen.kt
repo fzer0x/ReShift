@@ -21,11 +21,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,8 +35,14 @@ import androidx.core.net.toUri
 import ox.fzer0x.snakeloader.DownloadedScript
 import ox.fzer0x.snakeloader.ModuleMetadata
 import ox.fzer0x.snakeloader.ScriptManager
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.components.BadgePill
 import ox.fzer0x.snakeloader.ui.components.SectionHeader
 import kotlinx.coroutines.launch
+import java.net.URL
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +64,11 @@ fun ModulesScreen(
 
     fun refresh() {
         allScripts = scriptManager.getScripts()
+    }
+
+    LaunchedEffect(Unit) {
+        scriptManager.initialize()
+        refresh()
     }
 
     val filteredScripts = remember(allScripts, searchQuery) {
@@ -81,15 +94,14 @@ fun ModulesScreen(
         }
     }
 
-
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Modules", fontWeight = FontWeight.SemiBold) },
+            ReShiftTopAppBar(
+                title = "Modules",
                 actions = {
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Options")
@@ -199,7 +211,7 @@ fun ModulesScreen(
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 )
             }
 
@@ -271,7 +283,7 @@ fun FabMenuItem(
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
+        shape = ReShiftButtonShape,
         color = color,
         modifier = Modifier.height(48.dp)
     ) {
@@ -310,11 +322,7 @@ fun ModuleListItem(
         else -> MaterialTheme.colorScheme.secondary
     }
 
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        onClick = onEdit
-    ) {
+    ReShiftCard(onClick = onEdit) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val icon = if (script.metadata.noEdit) Icons.Default.Lock else sourceIcon
@@ -322,14 +330,14 @@ fun ModuleListItem(
                 
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .background(tint.copy(alpha = 0.1f), CircleShape),
+                        .size(42.dp)
+                        .background(tint.copy(alpha = 0.12f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
+                    Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
                 }
                 
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(14.dp))
                 
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -342,23 +350,17 @@ fun ModuleListItem(
                         )
                         if (script.metadata.version != null) {
                             Spacer(Modifier.width(8.dp))
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "v${script.metadata.version}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                )
-                            }
+                            BadgePill(
+                                text = "v${script.metadata.version}",
+                                bgColor = MaterialTheme.colorScheme.surfaceVariant,
+                                textColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                     val displayRepo = remember(script.repository) {
                         if (script.repository.startsWith("http")) {
                             try {
-                                val url = java.net.URL(script.repository)
+                                val url = URL(script.repository)
                                 url.host.removePrefix("www.")
                             } catch (_: Exception) {
                                 script.repository.take(30) + "..."
@@ -371,7 +373,7 @@ fun ModuleListItem(
                     Text(
                         text = displayRepo,
                         style = MaterialTheme.typography.labelSmall,
-                        color = sourceColor.copy(alpha = 0.7f),
+                        color = sourceColor.copy(alpha = 0.8f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -384,7 +386,7 @@ fun ModuleListItem(
                         scriptManager.setEnabled(script.id, it)
                         onRefresh()
                     },
-                    modifier = Modifier.scale(0.8f)
+                    modifier = Modifier.scale(0.85f)
                 )
             }
             
@@ -394,8 +396,8 @@ fun ModuleListItem(
             if (hasDescription || hasUrl) {
                 Spacer(Modifier.height(12.dp))
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    shape = ReShiftChipShape,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
@@ -420,15 +422,15 @@ fun ModuleListItem(
                                     } catch (_: Exception) {}
                                 }
                             ) {
-                                Icon(Icons.Default.Link, null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
-                                Spacer(Modifier.width(4.dp))
+                                Icon(Icons.Default.Link, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(6.dp))
                                 Text(
                                     text = "Source: ${script.repository}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                                    textDecoration = TextDecoration.Underline
                                 )
                             }
                         }
@@ -457,6 +459,7 @@ fun ModuleListItem(
                     Text(
                         text = if (appCount == 1) "Active in 1 app" else "Active in $appCount apps",
                         style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
                         color = if (appCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                 }

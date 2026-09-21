@@ -21,6 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import ox.fzer0x.snakeloader.*
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,27 +141,17 @@ fun RepoBrowserScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text(selectedRepository?.name ?: "Repositories", fontWeight = FontWeight.SemiBold)
-                        if (selectedRepository != null) {
-                            Text(currentPath.ifEmpty { "root" }, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (selectedRepository == null) onBack()
-                        else if (currentPath.isEmpty()) {
-                            selectedRepository = null
-                            scripts = emptyList()
-                        } else {
-                            val parent = if (currentPath.contains("/")) currentPath.substringBeforeLast("/") else ""
-                            loadPath(selectedRepository!!, parent)
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+            ReShiftTopAppBar(
+                title = selectedRepository?.name ?: "Repositories",
+                subtitle = if (selectedRepository != null) currentPath.ifEmpty { "root" } else null,
+                onBack = {
+                    if (selectedRepository == null) onBack()
+                    else if (currentPath.isEmpty()) {
+                        selectedRepository = null
+                        scripts = emptyList()
+                    } else {
+                        val parent = if (currentPath.contains("/")) currentPath.substringBeforeLast("/") else ""
+                        loadPath(selectedRepository!!, parent)
                     }
                 },
                 actions = {
@@ -185,16 +179,14 @@ fun RepoBrowserScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(repositories) { repo ->
-                    OutlinedCard(
-                        onClick = { loadPath(repo, repo.defaultPath) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                    ReShiftCard(
+                        onClick = { loadPath(repo, repo.defaultPath) }
                     ) {
                         ListItem(
                             headlineContent = { Text(repo.name, fontWeight = FontWeight.Bold) },
                             supportingContent = { Text(repo.description, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             leadingContent = {
-                                Box(modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                                Box(modifier = Modifier.size(38.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
                                     Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                 }
                             },
@@ -227,13 +219,11 @@ fun RepoBrowserScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(scripts) { file ->
-                        OutlinedCard(
+                        ReShiftCard(
                             onClick = {
                                 if (file.isDirectory) loadPath(selectedRepository!!, file.path)
                                 else scriptToPreview = file
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            }
                         ) {
                             ListItem(
                                 headlineContent = { Text(file.name, fontWeight = if (file.isDirectory) FontWeight.Bold else FontWeight.Medium) },
@@ -241,7 +231,7 @@ fun RepoBrowserScreen(
                                 leadingContent = { 
                                     val icon = if (file.isDirectory) Icons.Default.Folder else Icons.Default.Description
                                     val color = if (file.isDirectory) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-                                    Box(modifier = Modifier.size(32.dp).background(color.copy(alpha = 0.1f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.size(34.dp).background(color.copy(alpha = 0.12f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                                         Icon(icon, null, tint = color, modifier = Modifier.size(18.dp))
                                     }
                                 },
@@ -274,25 +264,26 @@ fun RepoBrowserScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Size: ${scriptToPreview!!.size / 1024} KB", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(scriptToPreview!!.repository.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Text(scriptToPreview!!.repository.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = { downloadScript(scriptToPreview!!) },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 ) {
                     Icon(Icons.Default.Download, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Download")
+                    Text("Download", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { scriptToPreview = null }) {
+                TextButton(onClick = { scriptToPreview = null }, shape = ReShiftButtonShape) {
                     Text("Cancel")
                 }
-            }
+            },
+            shape = ReShiftDialogShape
         )
     }
 
@@ -306,9 +297,9 @@ fun RepoBrowserScreen(
             title = { Text("Add Custom Repository", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(value = owner, onValueChange = { owner = it }, label = { Text("Owner (e.g. frida)") }, singleLine = true, shape = RoundedCornerShape(12.dp))
-                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Repo Name") }, singleLine = true, shape = RoundedCornerShape(12.dp))
-                    OutlinedTextField(value = path, onValueChange = { path = it }, label = { Text("Root Path (optional)") }, singleLine = true, shape = RoundedCornerShape(12.dp))
+                    OutlinedTextField(value = owner, onValueChange = { owner = it }, label = { Text("Owner (e.g. frida)") }, singleLine = true, shape = ReShiftButtonShape)
+                    OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Repo Name") }, singleLine = true, shape = ReShiftButtonShape)
+                    OutlinedTextField(value = path, onValueChange = { path = it }, label = { Text("Root Path (optional)") }, singleLine = true, shape = ReShiftButtonShape)
                 }
             },
             confirmButton = {
@@ -320,16 +311,17 @@ fun RepoBrowserScreen(
                             showAddRepoDialog = false
                         }
                     },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 ) {
-                    Text("Add Repo")
+                    Text("Add Repo", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAddRepoDialog = false }) {
+                TextButton(onClick = { showAddRepoDialog = false }, shape = ReShiftButtonShape) {
                     Text("Cancel")
                 }
-            }
+            },
+            shape = ReShiftDialogShape
         )
     }
 }

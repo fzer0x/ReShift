@@ -17,12 +17,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ox.fzer0x.snakeloader.ModuleMetadata
 import ox.fzer0x.snakeloader.ScriptManager
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
 
 private data class AssetMetadata(
     val fileName: String,
@@ -93,13 +99,9 @@ fun AssetBrowserScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("ReShift Assets", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                }
+            ReShiftTopAppBar(
+                title = "ReShift Assets",
+                onBack = onBack
             )
         }
     ) { padding ->
@@ -120,7 +122,7 @@ fun AssetBrowserScreen(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = ReShiftButtonShape
             )
 
             if (filteredAssets.isEmpty()) {
@@ -151,7 +153,7 @@ fun AssetBrowserScreen(
                         item {
                             Surface(
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = ReShiftButtonShape,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { toggleFolder(folder) }
@@ -172,7 +174,7 @@ fun AssetBrowserScreen(
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.primary,
-                                        letterSpacing = 1.sp
+                                        letterSpacing = 1.2.sp
                                     )
                                     Spacer(modifier = Modifier.weight(1f))
                                     Text(
@@ -186,17 +188,15 @@ fun AssetBrowserScreen(
                         
                         if (isExpanded) {
                             items(assetsInFolder) { asset ->
-                                OutlinedCard(
-                                    onClick = { assetToPreview = asset },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp)
+                                ReShiftCard(
+                                    onClick = { assetToPreview = asset }
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Box(
-                                            modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
+                                            modifier = Modifier.size(38.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(8.dp)),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(Icons.Default.Extension, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
@@ -207,7 +207,7 @@ fun AssetBrowserScreen(
                                                 Text(asset.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                                 if (asset.version != null) {
                                                     Spacer(Modifier.width(8.dp))
-                                                    Text("v${asset.version}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                                                    Text("v${asset.version}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
                                                 }
                                             }
                                             if (asset.description != null) {
@@ -239,12 +239,12 @@ fun AssetBrowserScreen(
                 Column {
                     Text(assetToPreview!!.description ?: "No description available.", style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(16.dp))
-                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp)) {
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = ReShiftChipShape) {
                         Text(
                             "path: ${assetToPreview!!.fileName}",
                             modifier = Modifier.padding(8.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace
                         )
                     }
                 }
@@ -256,18 +256,19 @@ fun AssetBrowserScreen(
                         assetToPreview = null
                         onBack()
                     },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 ) {
                     Icon(Icons.Default.Download, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Import Module")
+                    Text("Import Module", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { assetToPreview = null }) {
+                TextButton(onClick = { assetToPreview = null }, shape = ReShiftButtonShape) {
                     Text("Cancel")
                 }
-            }
+            },
+            shape = ReShiftDialogShape
         )
     }
 }

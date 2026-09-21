@@ -31,8 +31,14 @@ data class MemoryDumpInfo(
 class RpcBridge(private val context: Context) {
     companion object {
         private const val TAG = "RpcBridge"
-        private const val RPC_PORT = 27043
+        private const val DEFAULT_RPC_PORT = 27043
         private const val TIMEOUT_MS = 5000L
+    }
+
+    private fun getEffectivePort(): Int {
+        val stealthManager = StealthConfigManager(context, SettingsManager(context))
+        val port = stealthManager.getActivePort()
+        return if (port > 0) port else DEFAULT_RPC_PORT
     }
 
     private var rpcServer: Process? = null
@@ -41,14 +47,15 @@ class RpcBridge(private val context: Context) {
 
     suspend fun startRpcServer(): Boolean = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "Starting RPC bridge connection sequence (Target: 127.0.0.1:$RPC_PORT)")
+            val port = getEffectivePort()
+            Log.d(TAG, "Starting RPC bridge connection sequence (Target: 127.0.0.1:$port)")
             val maxRetries = 25
             var retries = 0
             var lastError: Exception? = null
 
             while (retries < maxRetries) {
                 try {
-                    val client = FridaRpcClient("127.0.0.1", RPC_PORT)
+                    val client = FridaRpcClient("127.0.0.1", port)
                     Log.d(TAG, "RPC connection attempt ${retries + 1}/$maxRetries...")
                     val testResult = client.call("testConnection")
                     

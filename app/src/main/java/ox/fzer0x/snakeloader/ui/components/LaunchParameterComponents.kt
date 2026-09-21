@@ -2,7 +2,6 @@ package ox.fzer0x.snakeloader.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,17 +23,14 @@ fun LaunchParametersSection(
     onDebugLogChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    OutlinedCard(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+    ReShiftCard(modifier = modifier) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 "LAUNCH PARAMETERS",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.sp
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.2.sp
             )
             
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -101,8 +97,8 @@ fun ConfigGroup(label: String, content: @Composable () -> Unit) {
             label.uppercase(), 
             style = MaterialTheme.typography.labelMedium, 
             color = MaterialTheme.colorScheme.primary, 
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.sp
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp
         )
         content()
     }

@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -24,6 +25,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import ox.fzer0x.snakeloader.*
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,13 +135,9 @@ fun CodeShareBrowserScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Frida CodeShare", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                }
+            ReShiftTopAppBar(
+                title = "Frida CodeShare",
+                onBack = onBack
             )
         }
     ) { padding ->
@@ -157,8 +159,8 @@ fun CodeShareBrowserScreen(
                             }) {
                                 Icon(Icons.Default.Close, null)
                             }
-                            TextButton(onClick = { loadProjects(searchQuery, 1) }) {
-                                Text("Search")
+                            TextButton(onClick = { loadProjects(searchQuery, 1) }, shape = ReShiftButtonShape) {
+                                Text("Search", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -166,7 +168,7 @@ fun CodeShareBrowserScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { loadProjects(searchQuery, 1) }),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = ReShiftButtonShape
             )
 
             if (isLoading) {
@@ -181,8 +183,8 @@ fun CodeShareBrowserScreen(
                         Text("No projects found", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.outline)
                         if (searchQuery.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { loadProjects(searchQuery, 1) }, shape = RoundedCornerShape(12.dp)) {
-                                Text("Search Globally")
+                            Button(onClick = { loadProjects(searchQuery, 1) }, shape = ReShiftButtonShape) {
+                                Text("Search Globally", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -194,16 +196,14 @@ fun CodeShareBrowserScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(filteredProjects) { project ->
-                        OutlinedCard(
-                            onClick = { projectToPreview = project },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                        ReShiftCard(
+                            onClick = { projectToPreview = project }
                         ) {
                             ListItem(
                                 headlineContent = { Text(project.name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                supportingContent = { Text("@${project.author}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall) },
+                                supportingContent = { Text("@${project.author}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
                                 leadingContent = {
-                                    Box(modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.size(38.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
                                         Icon(Icons.Default.Public, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                                     }
                                 },
@@ -219,7 +219,7 @@ fun CodeShareBrowserScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = ReShiftButtonShape
                         ) {
                             Row(
                                 modifier = Modifier.padding(8.dp),
@@ -264,12 +264,12 @@ fun CodeShareBrowserScreen(
                     Text(previewDetails ?: "Loading info...", style = MaterialTheme.typography.bodyMedium)
                     if (previewSource != null) {
                         Spacer(modifier = Modifier.height(12.dp))
-                        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(8.dp)) {
+                        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = ReShiftChipShape) {
                             Text(
                                 "Preview: ${previewSource!!.take(100)}...",
                                 modifier = Modifier.padding(8.dp),
                                 style = MaterialTheme.typography.labelSmall,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                fontFamily = FontFamily.Monospace
                             )
                         }
                     }
@@ -278,18 +278,19 @@ fun CodeShareBrowserScreen(
             confirmButton = {
                 Button(
                     onClick = { downloadProject(projectToPreview!!) },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 ) {
                     Icon(Icons.Default.Download, null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Import Script")
+                    Text("Import Script", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { projectToPreview = null }) {
+                TextButton(onClick = { projectToPreview = null }, shape = ReShiftButtonShape) {
                     Text("Cancel")
                 }
-            }
+            },
+            shape = ReShiftDialogShape
         )
     }
 }

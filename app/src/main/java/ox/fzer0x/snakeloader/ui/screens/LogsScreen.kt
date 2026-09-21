@@ -40,10 +40,18 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import ox.fzer0x.snakeloader.LogManager
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.theme.ErrorRed
+import ox.fzer0x.snakeloader.ui.theme.InfoBlue
+import ox.fzer0x.snakeloader.ui.theme.SuccessGreen
+import ox.fzer0x.snakeloader.ui.theme.WarningOrange
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
+import ox.fzer0x.snakeloader.LogcatReader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +79,7 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
     var showMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        ox.fzer0x.snakeloader.LogcatReader.start()
+        LogcatReader.start()
     }
 
     val currentLogs = remember(selectedTab, searchQuery, selectedLevel, scriptLogs, logcatLogs, fridaLogs) {
@@ -112,9 +120,9 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
     Scaffold(
         topBar = {
             Column {
-                TopAppBar(
-                    title = { 
-                        if (isSearchExpanded) {
+                if (isSearchExpanded) {
+                    TopAppBar(
+                        title = {
                             TextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
@@ -139,77 +147,73 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
                                     }
                                 }
                             )
-                        } else {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.History, null, tint = MaterialTheme.colorScheme.primary)
-                                Spacer(Modifier.width(12.dp))
-                                Text("System Logs", fontWeight = FontWeight.SemiBold)
-                            }
                         }
-                    },
-                    actions = {
-                        if (!isSearchExpanded) {
+                    )
+                } else {
+                    ReShiftTopAppBar(
+                        title = "System Logs",
+                        actions = {
                             IconButton(onClick = { isSearchExpanded = true }) {
                                 Icon(Icons.Default.Search, contentDescription = "Search")
                             }
+                            IconButton(onClick = { autoScrollEnabled = !autoScrollEnabled }) {
+                                Icon(
+                                    if (autoScrollEnabled) Icons.Default.VerticalAlignTop else Icons.Default.VerticalAlignBottom,
+                                    contentDescription = "Toggle auto-scroll",
+                                    tint = if (autoScrollEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                )
+                            }
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Share current view") },
+                                    onClick = {
+                                        showMenu = false
+                                        shareLogs(context, tabs[selectedTab].first, currentLogs, timeFormat)
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Share, null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Clear All") },
+                                    onClick = { 
+                                        showMenu = false
+                                        when (selectedTab) {
+                                            0 -> LogManager.clearLogs()
+                                            1 -> LogManager.clearLogcat()
+                                            2 -> LogManager.clearFridaLogs()
+                                        }
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.DeleteSweep, null) }
+                                )
+                                HorizontalDivider()
+                                DropdownMenuItem(
+                                    text = { Text("Settings") },
+                                    onClick = {
+                                        showMenu = false
+                                        onNavigateToSettings()
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Settings, null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Join Community") },
+                                    onClick = {
+                                        showMenu = false
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, "https://t.me/+1FZrr4SqgMg1MDky".toUri())
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {}
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Group, null) }
+                                )
+                            }
                         }
-                        IconButton(onClick = { autoScrollEnabled = !autoScrollEnabled }) {
-                            Icon(
-                                if (autoScrollEnabled) Icons.Default.VerticalAlignTop else Icons.Default.VerticalAlignBottom,
-                                contentDescription = "Toggle auto-scroll",
-                                tint = if (autoScrollEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                            )
-                        }
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Options")
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Share current view") },
-                                onClick = {
-                                    showMenu = false
-                                    shareLogs(context, tabs[selectedTab].first, currentLogs, timeFormat)
-                                },
-                                leadingIcon = { Icon(Icons.Default.Share, null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Clear All") },
-                                onClick = { 
-                                    showMenu = false
-                                    when (selectedTab) {
-                                        0 -> LogManager.clearLogs()
-                                        1 -> LogManager.clearLogcat()
-                                        2 -> LogManager.clearFridaLogs()
-                                    }
-                                },
-                                leadingIcon = { Icon(Icons.Default.DeleteSweep, null) }
-                            )
-                            HorizontalDivider()
-                            DropdownMenuItem(
-                                text = { Text("Settings") },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToSettings()
-                                },
-                                leadingIcon = { Icon(Icons.Default.Settings, null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Join Community") },
-                                onClick = {
-                                    showMenu = false
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW, "https://t.me/+1FZrr4SqgMg1MDky".toUri())
-                                        context.startActivity(intent)
-                                    } catch (_: Exception) {}
-                                },
-                                leadingIcon = { Icon(Icons.Default.Group, null) }
-                            )
-                        }
-                    }
-                )
+                    )
+                }
                 
                 PrimaryTabRow(
                     selectedTabIndex = selectedTab,
@@ -244,7 +248,7 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
                             selected = selectedLevel == level,
                             onClick = { selectedLevel = level },
                             label = { Text(level) },
-                            shape = RoundedCornerShape(8.dp)
+                            shape = ReShiftChipShape
                         )
                     }
                 }
@@ -354,10 +358,10 @@ fun EmptyLogsView(padding: PaddingValues, selectedTab: Int, isFiltering: Boolean
 @Composable
 fun LogCard(entry: LogManager.LogEntry, timeFormat: SimpleDateFormat, onShare: () -> Unit) {
     val levelColor = when (entry.level) {
-        LogManager.LogLevel.ERROR -> Color(0xFFE57373)
-        LogManager.LogLevel.WARN -> Color(0xFFFFB74D)
-        LogManager.LogLevel.SUCCESS -> Color(0xFF81C784)
-        LogManager.LogLevel.DEBUG -> Color(0xFF64B5F6)
+        LogManager.LogLevel.ERROR -> ErrorRed
+        LogManager.LogLevel.WARN -> WarningOrange
+        LogManager.LogLevel.SUCCESS -> SuccessGreen
+        LogManager.LogLevel.DEBUG -> InfoBlue
         LogManager.LogLevel.VERBOSE -> Color(0xFFB0BEC5)
         LogManager.LogLevel.INFO -> MaterialTheme.colorScheme.primary
     }
@@ -370,10 +374,7 @@ fun LogCard(entry: LogManager.LogEntry, timeFormat: SimpleDateFormat, onShare: (
         else -> Icons.Default.Info
     }
 
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth().clickable { onShare() },
-        shape = RoundedCornerShape(12.dp)
-    ) {
+    ReShiftCard(onClick = onShare) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

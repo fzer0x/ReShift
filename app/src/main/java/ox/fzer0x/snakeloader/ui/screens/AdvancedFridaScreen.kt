@@ -3,6 +3,7 @@ package ox.fzer0x.snakeloader.ui.screens
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,7 +35,15 @@ import kotlinx.coroutines.launch
 import ox.fzer0x.snakeloader.AppInfo
 import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.FridaScript
-import ox.fzer0x.snakeloader.ui.components.*
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
+import ox.fzer0x.snakeloader.ui.components.SectionHeader
+import ox.fzer0x.snakeloader.ui.components.LaunchParametersSection
+import ox.fzer0x.snakeloader.ui.components.ConfigGroup
+import ox.fzer0x.snakeloader.ui.theme.SuccessGreen
 import ox.fzer0x.snakeloader.ui.viewmodels.AdvancedFridaViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -127,13 +136,9 @@ fun AdvancedFridaScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Advanced Config", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                },
+            ReShiftTopAppBar(
+                title = "Advanced Config",
+                onBack = onBack,
                 actions = {
                     IconButton(onClick = { 
                         scope.launch { viewModel.setFridaStatus(fridaManager.getFridaStatus()) }
@@ -184,7 +189,7 @@ fun AdvancedFridaScreen(
                     onClick = {
                         viewModel.setExecuting(true)
                         scope.launch {
-                            val success = fridaManager.executeFullToolchain(viewModel.currentPackage.value)
+                            val success = fridaManager.executeScriptContent(viewModel.currentPackage.value, "// Full Toolchain Default Script")
                             viewModel.setExecuting(false)
                             snackbarHostState.showSnackbar(if (success) "Toolchain started!" else "Toolchain failed")
                         }
@@ -193,7 +198,7 @@ fun AdvancedFridaScreen(
                         .fillMaxWidth()
                         .height(52.dp),
                     enabled = !viewModel.isExecuting.value,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 ) {
                     if (viewModel.isExecuting.value) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
@@ -212,7 +217,7 @@ fun AdvancedFridaScreen(
                         .fillMaxWidth()
                         .height(52.dp),
                     enabled = !viewModel.isExecuting.value,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 ) {
                     if (viewModel.isExecuting.value) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
@@ -279,10 +284,7 @@ private fun FridaStatusHeader(status: Map<String, Any>) {
     val serverRunning = status["server_running"] as? Boolean ?: false
     val selectedMode = status["selected_mode"] as? String ?: "auto"
 
-    OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+    ReShiftCard {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -292,7 +294,7 @@ private fun FridaStatusHeader(status: Map<String, Any>) {
                 StatusBadge(
                     label = "RUNNING",
                     value = runningBinary.uppercase(),
-                    color = if (runningBinary != "none") Color(0xFF4CAF50) else MaterialTheme.colorScheme.outline
+                    color = if (runningBinary != "none") SuccessGreen else MaterialTheme.colorScheme.outline
                 )
                 StatusBadge(
                     label = "STRATEGY",
@@ -302,12 +304,12 @@ private fun FridaStatusHeader(status: Map<String, Any>) {
                 StatusBadge(
                     label = "SRV",
                     value = if (serverRunning) "ON" else "OFF",
-                    color = if (serverRunning) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                    color = if (serverRunning) SuccessGreen else MaterialTheme.colorScheme.error
                 )
                 StatusBadge(
                     label = "",
                     value = if (isSmooth) "OK" else "ERR",
-                    color = if (isSmooth) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                    color = if (isSmooth) SuccessGreen else MaterialTheme.colorScheme.error
                 )
             }
             
@@ -326,10 +328,10 @@ private fun FridaStatusHeader(status: Map<String, Any>) {
 @Composable
 private fun StatusBadge(label: String, value: String, color: Color) {
     Surface(
-        color = color.copy(alpha = 0.1f),
+        color = color.copy(alpha = 0.12f),
         contentColor = color,
-        shape = RoundedCornerShape(6.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f))
+        shape = ReShiftChipShape,
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
     ) {
         Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold)
@@ -341,11 +343,7 @@ private fun StatusBadge(label: String, value: String, color: Color) {
 
 @Composable
 private fun TargetAppCard(app: AppInfo?, packageName: String, onClick: () -> Unit) {
-    OutlinedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+    ReShiftCard(onClick = onClick) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -376,10 +374,7 @@ private fun TargetAppCard(app: AppInfo?, packageName: String, onClick: () -> Uni
 
 @Composable
 private fun ConfigurationSection(viewModel: AdvancedFridaViewModel, fridaManager: FridaManager) {
-    OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+    ReShiftCard {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             ConfigGroup("STRATEGY") {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -440,7 +435,7 @@ private fun StrategyChip(label: String, selected: Boolean, available: Boolean = 
         modifier = modifier,
         label = { 
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Text(label, fontSize = 12.sp)
+                Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 if (!available) {
                     Spacer(Modifier.width(4.dp))
                     Icon(Icons.Default.Block, null, modifier = Modifier.size(10.dp), tint = MaterialTheme.colorScheme.error)
@@ -448,7 +443,7 @@ private fun StrategyChip(label: String, selected: Boolean, available: Boolean = 
             }
         },
         enabled = available,
-        shape = RoundedCornerShape(8.dp)
+        shape = ReShiftChipShape
     )
 }
 
@@ -463,7 +458,7 @@ private fun PackageSelectorDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Target Application") },
+        title = { Text("Target Application", fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 OutlinedTextField(
@@ -473,7 +468,7 @@ private fun PackageSelectorDialog(
                     placeholder = { Text("Filter...") },
                     leadingIcon = { Icon(Icons.Default.Search, null) },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 )
 
                 LazyColumn(modifier = Modifier.heightIn(max = 400.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -481,7 +476,7 @@ private fun PackageSelectorDialog(
                         Surface(
                             onClick = { onSelect(app.packageName) },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = ReShiftChipShape,
                             color = if (selectedPackage == app.packageName) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
                         ) {
                             Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -497,7 +492,8 @@ private fun PackageSelectorDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        confirmButton = { TextButton(onClick = onDismiss, shape = ReShiftButtonShape) { Text("Cancel") } },
+        shape = ReShiftDialogShape
     )
 }
 
@@ -512,19 +508,19 @@ private fun ScriptSelectorDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Multi-Script Management") },
+        title = { Text("Multi-Script Management", fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 OutlinedButton(
                     onClick = onImportScript,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = ReShiftButtonShape
                 ) {
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Import .js File")
+                    Text("Import .js File", fontWeight = FontWeight.Bold)
                 }
-                Text("Select modules to include:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 8.dp))
+                Text("Select modules to include:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                 LazyColumn(modifier = Modifier.heightIn(max = 300.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(availableScripts) { (scriptName, displayName) ->
                         val isSelected = selectedScripts.contains(scriptName)
@@ -534,8 +530,8 @@ private fun ScriptSelectorDialog(
                                 else onSelectionChanged(selectedScripts + scriptName)
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)) else null,
+                            shape = ReShiftChipShape,
+                            border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)) else null,
                             color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                         ) {
                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -552,11 +548,12 @@ private fun ScriptSelectorDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { onExecute(selectedScripts) }, enabled = selectedScripts.isNotEmpty()) {
-                Text("Deploy & Inject")
+            Button(onClick = { onExecute(selectedScripts) }, enabled = selectedScripts.isNotEmpty(), shape = ReShiftButtonShape) {
+                Text("Deploy & Inject", fontWeight = FontWeight.Bold)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss, shape = ReShiftButtonShape) { Text("Cancel") } },
+        shape = ReShiftDialogShape
     )
 }
 
@@ -567,10 +564,7 @@ private fun BinaryManagementSection(viewModel: AdvancedFridaViewModel, fridaMana
     val availableInject = status["available_inject"] as? Boolean ?: false
     val fridaVersion = status["frida_version"] as? String ?: "Unknown"
 
-    OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+    ReShiftCard {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Download, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
@@ -610,9 +604,9 @@ private fun BinaryActionChip(label: String, isInstalled: Boolean, onDownload: ()
     Surface(
         onClick = { if (!isInstalled && enabled) onDownload() },
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
+        shape = ReShiftChipShape,
         color = if (isInstalled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, if (isInstalled) MaterialTheme.colorScheme.outline.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+        border = BorderStroke(1.dp, if (isInstalled) MaterialTheme.colorScheme.outline.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
@@ -623,10 +617,10 @@ private fun BinaryActionChip(label: String, isInstalled: Boolean, onDownload: ()
                 if (isInstalled) Icons.Default.CheckCircle else Icons.Default.Download,
                 null,
                 modifier = Modifier.size(14.dp),
-                tint = if (isInstalled) Color(0xFF4CAF50) else MaterialTheme.colorScheme.primary
+                tint = if (isInstalled) SuccessGreen else MaterialTheme.colorScheme.primary
             )
             Spacer(Modifier.width(6.dp))
-            Text(label, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

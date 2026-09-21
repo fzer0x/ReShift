@@ -9,6 +9,7 @@ import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.foundation.background
@@ -39,6 +40,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import ox.fzer0x.snakeloader.ai.AutonomousAgentEngine
+import ox.fzer0x.snakeloader.ui.viewmodels.AutonomousAgentState
 
 class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
@@ -46,9 +49,10 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     private var scriptComposeView: ComposeView? = null
     private var logcatComposeView: ComposeView? = null
     private var fridaComposeView: ComposeView? = null
+    private var agentComposeView: ComposeView? = null
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
-    
+
     private val textSize = mutableStateOf(10f)
     private val opacity = mutableStateOf(0.8f)
     private val isScriptMinimized = mutableStateOf(false)
@@ -59,6 +63,7 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         const val TYPE_SCRIPT = 0
         const val TYPE_LOGCAT = 1
         const val TYPE_FRIDA = 2
+        const val TYPE_AGENT = 3
     }
 
     private fun createLayoutParams(x: Int, y: Int) = WindowManager.LayoutParams(
@@ -79,6 +84,22 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     private var scriptOverlayParams = createLayoutParams(50, 100)
     private var logcatOverlayParams = createLayoutParams(50, 450)
     private var fridaOverlayParams = createLayoutParams(50, 800)
+    private var agentOverlayParams = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        else
+            WindowManager.LayoutParams.TYPE_PHONE,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+        PixelFormat.TRANSLUCENT
+    ).apply {
+        gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+        this.x = 0
+        this.y = 100
+    }
 
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
@@ -128,6 +149,19 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
             }
         } else {
             fridaComposeView?.let { try { windowManager.removeView(it) } catch(e: Exception) {}; fridaComposeView = null }
+        }
+
+        if (agentComposeView == null) {
+            agentComposeView = createAgentOverlayView()
+            try {
+                windowManager.addView(agentComposeView, agentOverlayParams)
+            } catch (e: Exception) {
+                Log.e("OverlayService", "Error adding agentComposeView: ${e.message}", e)
+            }
+        } else {
+            try {
+                windowManager.updateViewLayout(agentComposeView, agentOverlayParams)
+            } catch (e: Exception) {}
         }
         
         return START_STICKY
@@ -378,6 +412,215 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
                     fontFamily = FontFamily.Monospace,
                     lineHeight = (textSize * 1.2f).sp
                 )
+            }
+        }
+    }
+
+    private fun createAgentOverlayView(): ComposeView {
+        return ComposeView(this).apply {
+            val viewModelStore = ViewModelStore()
+            val lifecycleOwner = this@OverlayService
+
+            setViewTreeLifecycleOwner(lifecycleOwner)
+            setViewTreeViewModelStoreOwner(object : ViewModelStoreOwner {
+                override val viewModelStore: ViewModelStore = viewModelStore
+            })
+            setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+
+            setContent {
+                val activeEngine = AutonomousAgentEngine.activeEngineInstance?.get()
+                val agentState by activeEngine?.agentState?.collectAsState(AutonomousAgentState.IDLE)
+                    ?: remember { mutableStateOf(AutonomousAgentState.IDLE) }
+                val currentIteration by activeEngine?.currentIteration?.collectAsState(0)
+                    ?: remember { mutableStateOf(0) }
+
+                // Dynamically update window flags depending on state
+                LaunchedEffect(agentState) {
+                    if (agentState == AutonomousAgentState.WAITING_USER_EVALUATION) {
+                        // Make window touchable and focusable so buttons and text field work over target app
+                        agentOverlayParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                        try {
+                            windowManager.updateViewLayout(this@apply, agentOverlayParams)
+                        } catch (e: Exception) {}
+                    } else {
+                        // Non-blocking mode when just monitoring/loading
+                        agentOverlayParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                        try {
+                            windowManager.updateViewLayout(this@apply, agentOverlayParams)
+                        } catch (e: Exception) {}
+                    }
+                }
+
+                if (agentState != AutonomousAgentState.IDLE) {
+                    var showRefinementInput by remember { mutableStateOf(false) }
+                    var refinedPromptInput by remember { mutableStateOf("") }
+
+                    Surface(
+                        color = Color(0xFF11111B).copy(alpha = 0.95f),
+                        shape = RoundedCornerShape(16.dp),
+                        tonalElevation = 12.dp,
+                        shadowElevation = 10.dp,
+                        modifier = Modifier
+                            .wrapContentSize()
+                            .padding(8.dp)
+                            .pointerInput(Unit) {
+                                detectDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    agentOverlayParams.x += dragAmount.x.toInt()
+                                    agentOverlayParams.y += dragAmount.y.toInt()
+                                    try {
+                                        windowManager.updateViewLayout(this@apply, agentOverlayParams)
+                                    } catch (e: Exception) {}
+                                }
+                            }
+                    ) {
+                        if (agentState == AutonomousAgentState.WAITING_USER_EVALUATION) {
+                            Column(
+                                modifier = Modifier
+                                    .width(320.dp)
+                                    .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.Psychology,
+                                            contentDescription = null,
+                                            tint = Color(0xFF89B4FA),
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "ReShift AI Agent",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Surface(
+                                        color = Color(0xFF313244),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "Versuch #$currentIteration",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFFA6ADC8),
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = "Ziel im Spiel erreicht? Wurde das gewünschte Ergebnis (z.B. Budget/Coins auf 50 Mio erhöht) erzielt?",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFFCDD6F4),
+                                    lineHeight = 16.sp
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            val engine = activeEngine ?: AutonomousAgentEngine.activeEngineInstance?.get()
+                                            engine?.submitUserEvaluation(goalAchieved = true)
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("JA!", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            showRefinementInput = true
+                                            agentOverlayParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                                                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                                                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                                            try {
+                                                windowManager.updateViewLayout(agentComposeView, agentOverlayParams)
+                                            } catch (e: Exception) {}
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("NEIN", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                if (showRefinementInput) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        OutlinedTextField(
+                                            value = refinedPromptInput,
+                                            onValueChange = { refinedPromptInput = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            placeholder = { Text("Tipp für KI (z.B. 'Hooke AddCoins')", fontSize = 11.sp, color = Color.Gray) },
+                                            maxLines = 2,
+                                            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color.White)
+                                        )
+                                        Button(
+                                            onClick = {
+                                                val engine = activeEngine ?: AutonomousAgentEngine.activeEngineInstance?.get()
+                                                engine?.submitUserEvaluation(goalAchieved = false, refinedPrompt = refinedPromptInput.ifBlank { null })
+                                                showRefinementInput = false
+                                                refinedPromptInput = ""
+                                                agentOverlayParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                                                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                                                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                                                try {
+                                                    windowManager.updateViewLayout(agentComposeView, agentOverlayParams)
+                                                } catch (e: Exception) {}
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Nachjustieren & Erneut versuchen", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color(0xFF89B4FA)
+                                )
+                                Text(
+                                    text = "ReShift Agent: ${agentState.label}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

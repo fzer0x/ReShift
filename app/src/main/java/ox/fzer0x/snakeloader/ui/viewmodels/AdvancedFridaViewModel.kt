@@ -83,6 +83,10 @@ class AdvancedFridaViewModel(
         fridaStatus.value = status
     }
 
+    fun setAvailableBinaries(binaries: List<String>) {
+        availableBinaries.value = binaries.associateWith { true }
+    }
+
     fun clearCustomScripts() {
         customScriptContents.value = emptyMap()
     }

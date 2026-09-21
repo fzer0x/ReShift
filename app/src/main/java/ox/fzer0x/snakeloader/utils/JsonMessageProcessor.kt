@@ -15,12 +15,12 @@ object JsonMessageProcessor {
             val startIdx = line.indexOf("{")
             val endIdx = line.lastIndexOf("}")
             if (startIdx == -1 || endIdx == -1 || endIdx < startIdx) return false
-            
+
             val jsonStr = line.substring(startIdx, endIdx + 1)
             val map = gson.fromJson(jsonStr, Map::class.java) ?: return false
-            
+
             val type = map["type"] as? String ?: return false
-            
+
             return when (type) {
                 "ui_config" -> {
                     val controls = map["controls"] as? List<Map<String, Any>>

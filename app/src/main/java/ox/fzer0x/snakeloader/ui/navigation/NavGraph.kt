@@ -111,7 +111,7 @@ fun ReShiftNavGraph(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val viewModel = MemoryInspectorViewModel(fridaManager.getRpcManager(), fridaManager)
+                val viewModel = MemoryInspectorViewModel(null, fridaManager)
                 fridaManager.getDetectedHooks().forEach { hookName ->
                     viewModel.addDetectedHook(hookName)
                 }
@@ -135,7 +135,7 @@ fun ReShiftNavGraph(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return Il2CppViewModel(fridaManager) as T
+                return Il2CppViewModel(fridaManager, scriptManager) as T
             }
         }
     )
@@ -210,6 +210,9 @@ fun ReShiftNavGraph(
                 },
                 onNavigateToIl2CppInspector = {
                     navController.navigate(Screen.Il2CppInspector.route)
+                },
+                onNavigateToStalker = {
+                    navController.navigate(Screen.StalkerToolbox.route)
                 }
             )
         }
@@ -286,6 +289,9 @@ fun ReShiftNavGraph(
                 viewModel = il2cppViewModel,
                 onBack = {
                     navController.popBackStack()
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }

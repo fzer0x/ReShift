@@ -2,6 +2,7 @@ package ox.fzer0x.snakeloader.ui.screens
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -22,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +35,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ox.fzer0x.snakeloader.AppInfo
 import ox.fzer0x.snakeloader.ScriptManager
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
 import ox.fzer0x.snakeloader.ui.viewmodels.AppsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,8 +59,8 @@ fun AppsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Applications", fontWeight = FontWeight.SemiBold) },
+            ReShiftTopAppBar(
+                title = "Applications",
                 actions = {
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Options")
@@ -117,7 +121,7 @@ fun AppsScreen(
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 )
                 
                 Spacer(Modifier.height(8.dp))
@@ -132,6 +136,7 @@ fun AppsScreen(
                             selected = viewModel.selectedFilter == filter,
                             onClick = { viewModel.onFilterChange(filter) },
                             label = { Text(filter) },
+                            shape = ReShiftChipShape,
                             leadingIcon = if (viewModel.selectedFilter == filter) {
                                 { Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp)) }
                             } else null
@@ -170,7 +175,7 @@ fun AppsScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(viewModel.filteredApps, key = { it.packageName }) { app ->
                         AppListItem(app, scriptManager) {
@@ -195,11 +200,7 @@ fun AppListItem(app: AppInfo, scriptManager: ScriptManager, onClick: () -> Unit)
         }
     }
     
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        onClick = onClick
-    ) {
+    ReShiftCard(onClick = onClick) {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -209,22 +210,22 @@ fun AppListItem(app: AppInfo, scriptManager: ScriptManager, onClick: () -> Unit)
                     bitmap = iconBitmap,
                     contentDescription = null,
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(10.dp)),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)),
+                        .size(44.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(app.label.take(1), style = MaterialTheme.typography.titleMedium)
+                    Text(app.label.take(1), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
             
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(14.dp))
             
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -258,6 +259,7 @@ fun AppListItem(app: AppInfo, scriptManager: ScriptManager, onClick: () -> Unit)
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
+                Spacer(Modifier.width(8.dp))
             }
             
             Icon(
@@ -274,11 +276,11 @@ suspend fun loadInstalledApps(context: Context, includeSystemApps: Boolean = fal
     val pm = context.packageManager
     val packages = pm.getInstalledApplications(PackageManager.MATCH_ALL)
     packages.filter { appInfo ->
-        includeSystemApps || (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0
+        includeSystemApps || (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
     }.map { appInfo ->
         val label = pm.getApplicationLabel(appInfo).toString()
         val icon = try { pm.getApplicationIcon(appInfo) } catch (e: Exception) { null }
-        val isSystem = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+        val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
         AppInfo(appInfo.packageName, label, icon, isSystem)
     }.sortedBy { it.label.lowercase() }
 }

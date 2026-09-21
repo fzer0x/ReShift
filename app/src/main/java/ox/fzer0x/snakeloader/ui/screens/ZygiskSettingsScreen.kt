@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +33,13 @@ import ox.fzer0x.snakeloader.ZygiskAppEntry
 import ox.fzer0x.snakeloader.ScriptManager
 import ox.fzer0x.snakeloader.AppInfo
 import ox.fzer0x.snakeloader.DownloadedScript
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
+import ox.fzer0x.snakeloader.ui.components.SectionHeader
+import ox.fzer0x.snakeloader.ui.theme.SuccessGreen
 import org.koin.compose.koinInject
 import kotlinx.coroutines.launch
 
@@ -71,8 +79,8 @@ fun ZygiskSettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Zygisk Inject", fontWeight = FontWeight.SemiBold) },
+            ReShiftTopAppBar(
+                title = "Zygisk Inject",
                 actions = {
                     IconButton(onClick = {
                         zygiskManager.saveConfig(zygiskManager.getConfig())
@@ -100,32 +108,26 @@ fun ZygiskSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.elevatedCardColors(
-                        containerColor = if (zygiskEnabled) 
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
+                ReShiftCard {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 if (zygiskEnabled) Icons.Default.CheckCircle else Icons.Default.Cancel,
                                 contentDescription = null,
-                                tint = if (zygiskEnabled) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                                tint = if (zygiskEnabled) SuccessGreen else MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(32.dp)
                             )
                             Spacer(Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "Zygisk",
+                                    "Zygisk Service",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     if (zygiskEnabled) "Service is active" else "Service is disabled",
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Switch(
@@ -152,7 +154,7 @@ fun ZygiskSettingsScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                "Zygisk Early stage injection for stealth. Start target app normally, no need to launch Reshift.",
+                                "Zygisk early stage injection for stealth. Start target app normally, no need to launch ReShift.",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -162,13 +164,7 @@ fun ZygiskSettingsScreen(
             }
 
             item {
-                Text(
-                    "Global Hook List",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
+                SectionHeader("GLOBAL HOOK LIST")
             }
 
             if (apps.isEmpty()) {
@@ -189,7 +185,8 @@ fun ZygiskSettingsScreen(
                         Text(
                             "No target apps added",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.outline
+                            color = MaterialTheme.colorScheme.outline,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             "Tap the + button to add an app for Zygisk injection.",
@@ -244,7 +241,7 @@ fun ZygiskSettingsScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Javascript, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(12.dp))
-                    Text("Select Boot Scripts")
+                    Text("Select Boot Scripts", fontWeight = FontWeight.Bold)
                 }
             },
             text = {
@@ -273,7 +270,7 @@ fun ZygiskSettingsScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = ReShiftChipShape,
                                 border = BorderStroke(
                                     1.dp, 
                                     if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -305,10 +302,11 @@ fun ZygiskSettingsScreen(
                 }
             },
             confirmButton = {
-                Button(onClick = { selectedPackageForScript = null }) {
-                    Text("Done")
+                Button(onClick = { selectedPackageForScript = null }, shape = ReShiftButtonShape) {
+                    Text("Done", fontWeight = FontWeight.Bold)
                 }
-            }
+            },
+            shape = ReShiftDialogShape
         )
     }
 }
@@ -355,7 +353,7 @@ fun AppPickerDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Select Target App")
+                Text("Select Target App", fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("System", style = MaterialTheme.typography.labelSmall)
                     Checkbox(
@@ -381,7 +379,7 @@ fun AppPickerDialog(
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 )
                 Spacer(Modifier.height(16.dp))
                 if (isLoading) {
@@ -403,8 +401,9 @@ fun AppPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
+            TextButton(onClick = onDismiss, shape = ReShiftButtonShape) { Text("Cancel") }
+        },
+        shape = ReShiftDialogShape
     )
 }
 
@@ -421,7 +420,7 @@ fun AppPickerItem(app: AppInfo, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = ReShiftChipShape,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
     ) {
         Row(
@@ -485,12 +484,7 @@ fun ZygiskAppItem(
         }
     }
 
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
+    ReShiftCard {
         Row(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -544,7 +538,7 @@ fun ZygiskAppItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    androidx.compose.foundation.lazy.LazyRow(
+                    LazyRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -558,7 +552,8 @@ fun ZygiskAppItem(
                                 Text(
                                     text = script.name,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }

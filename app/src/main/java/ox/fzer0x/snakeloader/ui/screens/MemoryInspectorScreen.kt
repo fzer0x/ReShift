@@ -1,5 +1,6 @@
 package ox.fzer0x.snakeloader.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +23,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ox.fzer0x.snakeloader.HookInfo
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
 import ox.fzer0x.snakeloader.ui.components.SectionHeader
+import ox.fzer0x.snakeloader.ui.theme.SuccessGreen
 import ox.fzer0x.snakeloader.ui.viewmodels.MemoryInspectorViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,29 +60,21 @@ fun MemoryInspectorScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Memory Inspector", fontWeight = FontWeight.SemiBold)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Surface(
-                            color = if (isRpcAvailable) Color(0xFF4CAF50).copy(alpha = 0.1f) else Color.Gray.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(6.dp).background(if (isRpcAvailable) Color(0xFF4CAF50) else Color.Gray, CircleShape))
-                                Spacer(Modifier.width(4.dp))
-                                Text(if (isRpcAvailable) "RPC" else "IDLE", fontSize = 9.sp, fontWeight = FontWeight.Black, color = if (isRpcAvailable) Color(0xFF4CAF50) else Color.Gray)
-                            }
+            ReShiftTopAppBar(
+                title = "Memory Inspector",
+                onBack = onBack,
+                actions = {
+                    Surface(
+                        color = if (isRpcAvailable) SuccessGreen.copy(alpha = 0.12f) else Color.Gray.copy(alpha = 0.12f),
+                        shape = ReShiftChipShape,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(6.dp).background(if (isRpcAvailable) SuccessGreen else Color.Gray, CircleShape))
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (isRpcAvailable) "RPC" else "IDLE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (isRpcAvailable) SuccessGreen else Color.Gray)
                         }
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                },
-                actions = {
                     IconButton(onClick = { viewModel.refreshHooks() }) {
                         Icon(Icons.Default.Refresh, "Refresh")
                     }
@@ -96,17 +95,17 @@ fun MemoryInspectorScreen(
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    text = { Text("Hooks") }
+                    text = { Text("Hooks", fontWeight = FontWeight.Bold) }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    text = { Text("Scanner") }
+                    text = { Text("Scanner", fontWeight = FontWeight.Bold) }
                 )
                 Tab(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    text = { Text("State") }
+                    text = { Text("State", fontWeight = FontWeight.Bold) }
                 )
             }
 
@@ -187,7 +186,7 @@ private fun HooksTab(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(hooks) { hook ->
-                OutlinedCard(shape = RoundedCornerShape(12.dp)) {
+                ReShiftCard {
                     Row(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -199,7 +198,7 @@ private fun HooksTab(
                                 text = if (hook.active) "LINKED" else "SUSPENDED",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Black,
-                                color = if (hook.active) Color(0xFF4CAF50) else Color.Gray,
+                                color = if (hook.active) SuccessGreen else Color.Gray,
                                 letterSpacing = 0.5.sp
                             )
                         }
@@ -240,7 +239,7 @@ private fun ScannerTab(
             onValueChange = { searchPattern = it },
             label = { Text("Search Pattern (Hex: 00 AA BB ??)") },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = ReShiftButtonShape,
             trailingIcon = {
                 IconButton(onClick = { viewModel.performScan(searchPattern, selectedModule) }) {
                     Icon(Icons.Default.Search, null)
@@ -253,19 +252,19 @@ private fun ScannerTab(
             Button(
                 onClick = { onDumpMemory("0x0", 256) },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = ReShiftButtonShape
             ) {
                 Icon(Icons.Default.Memory, null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Dump", fontSize = 12.sp)
+                Text("Dump", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             
             OutlinedButton(
                 onClick = { },
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = ReShiftButtonShape
             ) {
-                Text(if (selectedModule.isEmpty()) "All Modules" else selectedModule, fontSize = 12.sp, maxLines = 1)
+                Text(if (selectedModule.isEmpty()) "All Modules" else selectedModule, fontSize = 12.sp, maxLines = 1, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -278,16 +277,15 @@ private fun ScannerTab(
         }
 
         if (scanResults.isNotEmpty()) {
-            Text("Matches: ${scanResults.size}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            Text("Matches: ${scanResults.size}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             LazyColumn(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(scanResults) { result ->
                     val address = result["address"] as? String ?: ""
-                    OutlinedCard(
-                        onClick = { onDumpMemory(address, 64) },
-                        shape = RoundedCornerShape(8.dp)
+                    ReShiftCard(
+                        onClick = { onDumpMemory(address, 64) }
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp).fillMaxWidth(),
@@ -308,10 +306,7 @@ private fun ScannerTab(
 
 @Composable
 private fun MemoryDumpView(dump: Map<String, String>) {
-    OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
-    ) {
+    ReShiftCard {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("ADDR: ${dump["address"]}", fontSize = 11.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
@@ -319,27 +314,27 @@ private fun MemoryDumpView(dump: Map<String, String>) {
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-            Text("RAW HEX", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            Text("RAW HEX", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Surface(
                 color = Color(0xFF1E1E1E),
-                shape = RoundedCornerShape(8.dp),
+                shape = ReShiftChipShape,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             ) {
                 Text(
                     text = dump["hex"] ?: "",
                     fontSize = 10.sp,
                     fontFamily = FontFamily.Monospace,
-                    color = Color(0xFF4CAF50),
+                    color = SuccessGreen,
                     modifier = Modifier.padding(8.dp),
                     lineHeight = 14.sp
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Text("ASCII STRING", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+            Text("ASCII STRING", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Surface(
                 color = Color(0xFF1E1E1E),
-                shape = RoundedCornerShape(8.dp),
+                shape = ReShiftChipShape,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             ) {
                 Text(
@@ -417,8 +412,8 @@ private fun RegistryTab(registryInfo: Map<String, Any>?) {
 private fun RegistryItem(key: String, value: String, isNested: Boolean = false) {
     Surface(
         color = if (isNested) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
-        border = androidx.compose.foundation.BorderStroke(
+        shape = ReShiftChipShape,
+        border = BorderStroke(
             1.dp, 
             if (isNested) MaterialTheme.colorScheme.outline.copy(alpha = 0.1f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
         ),
@@ -462,7 +457,7 @@ private fun ErrorBanner(message: String) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f),
-        shape = RoundedCornerShape(8.dp),
+        shape = ReShiftChipShape,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -493,27 +488,28 @@ private fun MemoryDumpDialog(
                     onValueChange = { address = it },
                     label = { Text("Address (Hex)") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 )
                 OutlinedTextField(
                     value = size,
                     onValueChange = { size = it },
                     label = { Text("Size (Bytes)") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 )
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(address, size) }, shape = RoundedCornerShape(12.dp)) {
-                Text("Execute Scan")
+            Button(onClick = { onConfirm(address, size) }, shape = ReShiftButtonShape) {
+                Text("Execute Scan", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, shape = ReShiftButtonShape) {
                 Text("Cancel")
             }
-        }
+        },
+        shape = ReShiftDialogShape
     )
 }
 
@@ -537,26 +533,27 @@ private fun MemoryWriteDialog(
                     onValueChange = { address = it },
                     label = { Text("Address (Hex)") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 )
                 OutlinedTextField(
                     value = value,
                     onValueChange = { value = it },
                     label = { Text("Value (Hex)") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 )
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(address, value) }, shape = RoundedCornerShape(12.dp)) {
-                Text("Write")
+            Button(onClick = { onConfirm(address, value) }, shape = ReShiftButtonShape) {
+                Text("Write", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, shape = ReShiftButtonShape) {
                 Text("Cancel")
             }
-        }
+        },
+        shape = ReShiftDialogShape
     )
 }

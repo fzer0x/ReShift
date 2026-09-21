@@ -1,15 +1,16 @@
 #!/system/bin/sh
 
 log_info() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $1" >> $LOG_FILE
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $1" >> "$LOG_FILE"
 }
 
 log_error() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" >> $LOG_FILE
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" >> "$LOG_FILE"
 }
 
+# Wait for boot completion across Magisk, KernelSU, KSU Next & APatch
 until [ "$(getprop sys.boot_completed)" = "1" ]; do
-  sleep 5
+  sleep 3
 done
 
 until [ -d "/data/adb" ]; do
@@ -36,10 +37,10 @@ else
     LOG_FILE="/data/local/tmp/frida_boot.log"
 fi
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] --- Boot service started (Stealth: $STEALTH_MODE) ---" > $LOG_FILE
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] --- ReShift Boot Service (Stealth: $STEALTH_MODE) ---" > "$LOG_FILE"
 
 if [ "$STEALTH_MODE" -eq 1 ]; then
-    log_info "Stealth Mode ACTIVE: Loaded config for $FRIDA_SERVER_NAME on port $FRIDA_PORT"
+    log_info "Stealth Mode ACTIVE: Config loaded for $FRIDA_SERVER_NAME on port $FRIDA_PORT"
 else
     [ -z "$FRIDA_SERVER_NAME" ] && FRIDA_SERVER_NAME="frida-server"
     [ -z "$FRIDA_PORT" ] && FRIDA_PORT=27042
@@ -53,14 +54,14 @@ check_binary() {
     if [ -f "$path" ]; then
         chmod 755 "$path"
         chown root:shell "$path"
-        log_info "$name found and permissioned at $path"
+        log_info "$name verified at $path"
         return 0
     fi
     return 1
 }
 
 if ! check_binary "$FRIDA_PATH" "Server"; then
-    log_error "Frida server not found at $FRIDA_PATH. Searching fallback..."
+    log_error "Frida server not found at $FRIDA_PATH. Searching fallback paths..."
     for ALT_PATH in "/data/local/tmp/frida-server" "/data/adb/reshift/frida-server" "/data/adb/reshift/$FRIDA_SERVER_NAME"; do
         if check_binary "$ALT_PATH" "Server fallback"; then
             FRIDA_PATH="$ALT_PATH"
@@ -75,32 +76,29 @@ if ! check_binary "$CLI_PATH" "Frida CLI"; then
     log_info "CLI binary not found at $CLI_PATH. Checking inject fallback..."
     CLI_PATH="/data/local/tmp/frida-inject"
     if ! check_binary "$CLI_PATH" "CLI fallback"; then
-        log_error "No CLI-capable binary found. RPC functionality will be unavailable."
+        log_info "No CLI binary found. Local RPC functionality will use JNI / direct attach."
     fi
 fi
 
-if netstat -tuln | grep -q ":$FRIDA_PORT "; then
-    log_info "Port $FRIDA_PORT is already in use. Checking if it's an old frida instance..."
+# Clean up existing instance if port is already bound
+if netstat -tuln 2>/dev/null | grep -q ":$FRIDA_PORT " || ss -tuln 2>/dev/null | grep -q ":$FRIDA_PORT "; then
+    log_info "Port $FRIDA_PORT is active. Checking for existing frida instances..."
     EXISTING_PID=$(pgrep -f "$FRIDA_SERVER_NAME")
-    if [ ! -z "$EXISTING_PID" ]; then
-        log_info "Existing instance found (PID: $EXISTING_PID), restarting..."
+    if [ -n "$EXISTING_PID" ]; then
+        log_info "Terminating previous instance (PID: $EXISTING_PID)..."
         kill -9 $EXISTING_PID
         sleep 1
     fi
 fi
 
-log_info "Starting $FRIDA_SERVER_NAME on port $FRIDA_PORT..."
+log_info "Launching $FRIDA_SERVER_NAME on port $FRIDA_PORT..."
 
 setsid nohup "$FRIDA_PATH" -l 0.0.0.0:"$FRIDA_PORT" > /dev/null 2>&1 &
 
 sleep 3
 FINAL_PID=$(pgrep -f "$FRIDA_SERVER_NAME")
-if [ ! -z "$FINAL_PID" ]; then
-    log_info "Frida server successfully started with PID $FINAL_PID"
-
-    if [ -d "/data/adb/modules/zygisk-frida" ]; then
-        log_info "ZygiskFrida module detected, ensuring compatibility..."
-    fi
+if [ -n "$FINAL_PID" ]; then
+    log_info "Frida server running cleanly (PID $FINAL_PID)"
 else
-    log_error "Frida server failed to start. Check binary compatibility."
+    log_error "Frida server start check warning. Will be auto-spawned on demand by ReShift app."
 fi

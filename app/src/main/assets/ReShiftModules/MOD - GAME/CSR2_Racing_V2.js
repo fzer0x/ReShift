@@ -10,7 +10,6 @@
 const IL2CPP_SO = 'libil2cpp.so';
 const TAG = "CSR2_DYNAMIC";
 
-// Fallback Offsets (DUMPED 2026-07-18)
 const FALLBACK_OFFSETS = {
     ThrowProfileError: 0x2c407dc,
     LogOperation: 0x2c40638,

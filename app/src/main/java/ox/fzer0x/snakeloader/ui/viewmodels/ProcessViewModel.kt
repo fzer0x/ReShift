@@ -9,7 +9,7 @@ class ProcessViewModel(
     private val fridaManager: FridaManager
 ) : BaseViewModel() {
 
-    var runningProcesses by mutableStateOf<List<Pair<String, String>>>(emptyList())
+    var runningProcesses by mutableStateOf<List<Pair<String, Int>>>(emptyList())
         private set
 
     var selectedProcessModules by mutableStateOf<List<String>>(emptyList())
@@ -17,11 +17,11 @@ class ProcessViewModel(
 
     fun refreshProcesses() {
         launchWithLoading {
-            runningProcesses = fridaManager.getRunningProcesses().filter { it.second.contains(".") }
+            runningProcesses = fridaManager.getRunningProcesses()
         }
     }
 
-    fun loadModules(pid: String) {
+    fun loadModules(pid: Int) {
         launchWithLoading {
             selectedProcessModules = fridaManager.getModulesForPid(pid)
         }

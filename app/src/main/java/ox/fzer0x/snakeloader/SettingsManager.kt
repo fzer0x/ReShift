@@ -199,4 +199,50 @@ class SettingsManager(context: Context) {
     var isTelegramDialogDismissed: Boolean
         get() = prefs.getBoolean("telegram_dialog_dismissed", false)
         set(value) = prefs.edit().putBoolean("telegram_dialog_dismissed", value).apply()
+
+    var geminiApiKey: String
+        get() {
+            val encrypted = prefs.getString("gemini_api_key_encrypted", null)
+            return if (encrypted != null && encryptionAvailable) {
+                EncryptionManager.decrypt(encrypted)
+            } else {
+                prefs.getString("gemini_api_key", "") ?: ""
+            }
+        }
+        set(value) {
+            val encrypted = if (encryptionAvailable) {
+                EncryptionManager.encrypt(value)
+            } else {
+                value
+            }
+            prefs.edit().putString("gemini_api_key_encrypted", encrypted).remove("gemini_api_key").apply()
+        }
+
+    var geminiModel: String
+        get() = prefs.getString("gemini_model", "gemini-3.6-flash") ?: "gemini-3.6-flash"
+        set(value) = prefs.edit().putString("gemini_model", value).apply()
+
+    var aiAutoCorrectionEnabled: Boolean
+        get() = prefs.getBoolean("ai_auto_correction_enabled", true)
+        set(value) = prefs.edit().putBoolean("ai_auto_correction_enabled", value).apply()
+
+    var aiProvider: String
+        get() = prefs.getString("ai_provider", "GEMINI") ?: "GEMINI"
+        set(value) = prefs.edit().putString("ai_provider", value).apply()
+
+    var ollamaBaseUrl: String
+        get() = prefs.getString("ollama_base_url", "http://127.0.0.1:11434") ?: "http://127.0.0.1:11434"
+        set(value) = prefs.edit().putString("ollama_base_url", value).apply()
+
+    var ollamaModel: String
+        get() = prefs.getString("ollama_model", "richardyoung/qwen2.5-7b-instruct-abliterated:latest") ?: "richardyoung/qwen2.5-7b-instruct-abliterated:latest"
+        set(value) = prefs.edit().putString("ollama_model", value).apply()
+
+    var onDeviceModelPath: String
+        get() = prefs.getString("on_device_model_path", "") ?: ""
+        set(value) = prefs.edit().putString("on_device_model_path", value).apply()
+
+    var useVulkanGpu: Boolean
+        get() = prefs.getBoolean("use_vulkan_gpu", true)
+        set(value) = prefs.edit().putBoolean("use_vulkan_gpu", value).apply()
 }

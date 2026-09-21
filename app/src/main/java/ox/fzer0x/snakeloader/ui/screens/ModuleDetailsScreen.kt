@@ -30,8 +30,13 @@ import ox.fzer0x.snakeloader.AppInfo
 import ox.fzer0x.snakeloader.DownloadedScript
 import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.ScriptManager
+import ox.fzer0x.snakeloader.ui.components.ReShiftCard
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
+import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
 import ox.fzer0x.snakeloader.ui.components.SectionHeader
 import ox.fzer0x.snakeloader.ui.components.StatusBadge
+import ox.fzer0x.snakeloader.ui.theme.SuccessGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,18 +67,10 @@ fun ModuleDetailsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text(script.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(script.repository, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-                    }
-                },
+            ReShiftTopAppBar(
+                title = script.name,
+                subtitle = script.repository,
+                onBack = onBack,
                 actions = {
                     if (!script.metadata.noEdit) {
                         IconButton(onClick = onNavigateToEditor) {
@@ -92,12 +89,12 @@ fun ModuleDetailsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                OutlinedCard(shape = RoundedCornerShape(12.dp)) {
+                ReShiftCard {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(12.dp))
-                            Text("MODULE INFO", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.sp)
+                            Text("MODULE INFO", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.2.sp)
                         }
                         
                         if (script.description != null) {
@@ -131,8 +128,8 @@ fun ModuleDetailsScreen(
                         script.metadata.targetPackages.forEach { pkg ->
                             SuggestionChip(
                                 onClick = { searchQuery = pkg },
-                                label = { Text(pkg, fontSize = 10.sp) },
-                                shape = RoundedCornerShape(8.dp)
+                                label = { Text(pkg, fontSize = 10.sp, fontWeight = FontWeight.Bold) },
+                                shape = ReShiftChipShape
                             )
                         }
                     }
@@ -157,7 +154,7 @@ fun ModuleDetailsScreen(
                         }
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = ReShiftButtonShape
                 )
             }
             
@@ -165,10 +162,8 @@ fun ModuleDetailsScreen(
                 val isAssigned = app.packageName in assignedApps
                 val isTargeted = app.packageName in script.metadata.targetPackages
                 
-                OutlinedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    border = if (isAssigned) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)) else CardDefaults.outlinedCardBorder()
+                ReShiftCard(
+                    border = if (isAssigned) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else CardDefaults.outlinedCardBorder()
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -187,7 +182,7 @@ fun ModuleDetailsScreen(
                             )
                         } else {
                             Box(modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Android, null, modifier = Modifier.size(20.dp), tint = Color(0xFF3DDC84))
+                                Icon(Icons.Default.Android, null, modifier = Modifier.size(20.dp), tint = SuccessGreen)
                             }
                         }
 
@@ -198,7 +193,7 @@ fun ModuleDetailsScreen(
                                 Text(app.label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 if (isTargeted) {
                                     Spacer(Modifier.width(8.dp))
-                                    Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
+                                    Surface(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), shape = RoundedCornerShape(4.dp)) {
                                         Text("SUGGESTED", modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp), fontSize = 7.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
                                     }
                                 }

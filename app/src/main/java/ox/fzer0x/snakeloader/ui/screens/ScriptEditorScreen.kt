@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ox.fzer0x.snakeloader.DownloadedScript
 import ox.fzer0x.snakeloader.ScriptManager
+import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,18 +40,10 @@ fun ScriptEditorScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text(script?.name ?: "Editor", fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        script?.repository?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            ReShiftTopAppBar(
+                title = script?.name ?: "Editor",
+                subtitle = script?.repository,
+                onBack = onBack,
                 actions = {
                     IconButton(
                         onClick = {

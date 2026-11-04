@@ -58,6 +58,7 @@ class GeminiApiService {
     companion object {
         private const val TAG = "GeminiApiService"
         private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/"
+        const val DEFAULT_MODEL = "gemini-3.8-flash"
     }
 
     private val gson = Gson()
@@ -75,9 +76,9 @@ class GeminiApiService {
 
         val userModelChoice = model.trim()
         val candidateModels = if (userModelChoice.isNotBlank()) {
-            listOf(userModelChoice, "gemini-3.6-flash", "gemini-3.5-flash-lite")
+            listOf(userModelChoice, DEFAULT_MODEL, "gemini-3.5-flash-lite")
         } else {
-            listOf("gemini-3.6-flash", "gemini-3.5-flash-lite")
+            listOf(DEFAULT_MODEL, "gemini-3.5-flash-lite")
         }.distinct()
 
         var lastException: Exception? = null
@@ -140,6 +141,10 @@ class GeminiApiService {
                         Log.w(TAG, "Gemini API error for $targetModel (HTTP $responseCode): $responseBodyStr")
                         val errObj = try { gson.fromJson(responseBodyStr, GeminiResponse::class.java)?.error } catch (e: Exception) { null }
                         val msg = errObj?.message ?: "HTTP $responseCode Error"
+
+                        if (responseCode == 401 || responseCode == 403) {
+                            return@withContext Result.failure(Exception("Gemini API Key authentication failed (HTTP $responseCode): $msg"))
+                        }
 
                         if (responseCode == 404) {
                             lastException = Exception("[$targetModel] Model not found (HTTP 404)")

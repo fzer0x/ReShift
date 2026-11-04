@@ -21,8 +21,8 @@ set(LLAMA_BUILD_SERVER   OFF CACHE BOOL "disable server" FORCE)
 set(BUILD_SHARED_LIBS    OFF CACHE BOOL "build static libs" FORCE)
 set(GGML_VULKAN          OFF CACHE BOOL "disable vulkan" FORCE)
 
-# Enable ARM NEON SIMD optimizations on Android arm64
-if(ANDROID_ABI STREQUAL "arm64-v8a")
+# Enable ARM NEON SIMD optimizations on Android arm64 and armeabi-v7a
+if(ANDROID_ABI STREQUAL "arm64-v8a" OR ANDROID_ABI STREQUAL "armeabi-v7a")
     set(GGML_NEON ON CACHE BOOL "compiler has NEON support" FORCE)
 endif()
 
@@ -48,5 +48,16 @@ target_link_libraries(
     reshift_llama
     llama
     ggml
+    ${log-lib}
+)
+
+add_library(
+    reshift_spoofer_native
+    SHARED
+    spoofer-native.cpp
+)
+
+target_link_libraries(
+    reshift_spoofer_native
     ${log-lib}
 )

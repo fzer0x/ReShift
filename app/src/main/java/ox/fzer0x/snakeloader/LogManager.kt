@@ -1,6 +1,7 @@
 package ox.fzer0x.snakeloader
 
 import androidx.compose.runtime.mutableStateOf
+import java.util.ArrayDeque
 import java.util.concurrent.atomic.AtomicLong
 
 object LogManager {
@@ -20,16 +21,32 @@ object LogManager {
         val isScriptRelated: Boolean = false
     )
 
-    private val _logs = mutableStateOf<List<LogEntry>>(emptyList())
-    val logs: List<LogEntry> get() = _logs.value
-
-    private val _fridaLogs = mutableStateOf<List<LogEntry>>(emptyList())
-    val fridaLogs: List<LogEntry> get() = _fridaLogs.value
-
-    private val _logcatEntries = mutableStateOf<List<LogEntry>>(emptyList())
-    val logcatEntries: List<LogEntry> get() = _logcatEntries.value
+    private const val MAX_LOGS = 1000
+    private const val MAX_LOGCAT_ENTRIES = 2000
 
     private val lock = Any()
+
+    private val logsDeque = ArrayDeque<LogEntry>(MAX_LOGS)
+    private val fridaLogsDeque = ArrayDeque<LogEntry>(MAX_LOGS)
+    private val logcatEntriesDeque = ArrayDeque<LogEntry>(MAX_LOGCAT_ENTRIES)
+
+    private val _logs = mutableStateOf<List<LogEntry>>(emptyList())
+    val logs: List<LogEntry> get() = synchronized(lock) {
+        _logs.value = logsDeque.toList()
+        _logs.value
+    }
+
+    private val _fridaLogs = mutableStateOf<List<LogEntry>>(emptyList())
+    val fridaLogs: List<LogEntry> get() = synchronized(lock) {
+        _fridaLogs.value = fridaLogsDeque.toList()
+        _fridaLogs.value
+    }
+
+    private val _logcatEntries = mutableStateOf<List<LogEntry>>(emptyList())
+    val logcatEntries: List<LogEntry> get() = synchronized(lock) {
+        _logcatEntries.value = logcatEntriesDeque.toList()
+        _logcatEntries.value
+    }
 
     fun addLog(packageName: String, message: String, isError: Boolean = false) {
         val level = if (isError) LogLevel.ERROR else LogLevel.INFO
@@ -42,10 +59,10 @@ object LogManager {
         )
         
         synchronized(lock) {
-            val newList = _logs.value.toMutableList()
-            newList.add(0, entry)
-            if (newList.size > 1000) newList.removeAt(newList.size - 1)
-            _logs.value = newList
+            logsDeque.addFirst(entry)
+            if (logsDeque.size > MAX_LOGS) {
+                logsDeque.removeLast()
+            }
         }
     }
 
@@ -69,24 +86,28 @@ object LogManager {
         )
         
         synchronized(lock) {
-            val newList = _logcatEntries.value.toMutableList()
-            newList.add(0, entry)
-            if (newList.size > 2000) {
-                while (newList.size > 2000) {
-                    newList.removeAt(newList.size - 1)
-                }
+            logcatEntriesDeque.addFirst(entry)
+            if (logcatEntriesDeque.size > MAX_LOGCAT_ENTRIES) {
+                logcatEntriesDeque.removeLast()
             }
-            _logcatEntries.value = newList
         }
     }
 
     fun addFridaLog(message: String) {
         val parsed = parseFridaLog(message)
         synchronized(lock) {
-            val newList = _fridaLogs.value.toMutableList()
-            newList.add(0, parsed)
-            if (newList.size > 1000) newList.removeAt(newList.size - 1)
-            _fridaLogs.value = newList
+            fridaLogsDeque.addFirst(parsed)
+            if (fridaLogsDeque.size > MAX_LOGS) {
+                fridaLogsDeque.removeLast()
+            }
+        }
+    }
+
+    fun flush() {
+        synchronized(lock) {
+            _logs.value = logsDeque.toList()
+            _fridaLogs.value = fridaLogsDeque.toList()
+            _logcatEntries.value = logcatEntriesDeque.toList()
         }
     }
 
@@ -137,18 +158,21 @@ object LogManager {
 
     fun clearLogs() {
         synchronized(lock) {
+            logsDeque.clear()
             _logs.value = emptyList()
         }
     }
 
     fun clearFridaLogs() {
         synchronized(lock) {
+            fridaLogsDeque.clear()
             _fridaLogs.value = emptyList()
         }
     }
 
     fun clearLogcat() {
         synchronized(lock) {
+            logcatEntriesDeque.clear()
             _logcatEntries.value = emptyList()
         }
     }

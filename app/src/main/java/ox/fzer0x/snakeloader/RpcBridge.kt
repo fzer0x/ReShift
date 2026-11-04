@@ -45,47 +45,46 @@ class RpcBridge(private val context: Context) {
     private var rpcClient: FridaRpcClient? = null
     private val scope = CoroutineScope(Dispatchers.Default + Job())
 
-    suspend fun startRpcServer(): Boolean = withContext(Dispatchers.IO) {
-        try {
+    suspend fun startRpcServer(maxTotalTimeoutMs: Long = 8000L): Boolean = withContext(Dispatchers.IO) {
+        val result = withTimeoutOrNull(maxTotalTimeoutMs) {
             val port = getEffectivePort()
-            Log.d(TAG, "Starting RPC bridge connection sequence (Target: 127.0.0.1:$port)")
-            val maxRetries = 25
+            Log.d(TAG, "Starting RPC bridge connection sequence (Target: 127.0.0.1:$port, Timeout: ${maxTotalTimeoutMs}ms)")
             var retries = 0
             var lastError: Exception? = null
 
-            while (retries < maxRetries) {
+            while (isActive) {
                 try {
                     val client = FridaRpcClient("127.0.0.1", port)
-                    Log.d(TAG, "RPC connection attempt ${retries + 1}/$maxRetries...")
+                    Log.d(TAG, "RPC connection attempt ${retries + 1}...")
                     val testResult = client.call("testConnection")
                     
                     if (testResult != null) {
                         Log.d(TAG, "RPC Connected and verified successfully!")
                         rpcClient = client
-                        return@withContext true
+                        return@withTimeoutOrNull true
                     } else {
                         Log.w(TAG, "RPC connected but script hasn't exported testConnection yet (attempt ${retries + 1})")
                         client.close()
                     }
                 } catch (e: Exception) {
                     lastError = e
-                    if (retries % 5 == 0) {
+                    if (retries % 3 == 0) {
                         Log.d(TAG, "RPC connection status: ${e.message} (retrying...)")
                     }
                 }
                 
                 retries++
-                if (retries < maxRetries) {
-                    val waitTime = if (retries < 5) 1000L else 2000L
-                    delay(waitTime)
+                val waitTime = when {
+                    retries <= 3 -> 250L
+                    retries <= 8 -> 500L
+                    else -> 1000L
                 }
+                delay(waitTime)
             }
-            Log.e(TAG, "RPC connection failed after $maxRetries attempts. Last error: ${lastError?.message}")
-            false
-        } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error in startRpcServer", e)
+            Log.e(TAG, "RPC connection retry loop ended. Last error: ${lastError?.message}")
             false
         }
+        result ?: false
     }
 
     suspend fun callRpc(method: String, params: List<Any> = emptyList()): RpcResponse {
@@ -270,8 +269,8 @@ class RpcBridge(private val context: Context) {
 class FridaRpcClient(private val host: String, private val port: Int) {
     companion object {
         private const val TAG = "FridaRpcClient"
-        private const val READ_TIMEOUT_MS = 10000
-        private const val CONNECT_TIMEOUT_MS = 5000
+        private const val READ_TIMEOUT_MS = 5000
+        private const val CONNECT_TIMEOUT_MS = 1000
     }
 
     private var socket: java.net.Socket? = null

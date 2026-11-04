@@ -24,6 +24,22 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ReShift">
+
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="libxposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="ReShift Dynamic Device Fingerprint Anonymizer &amp; Vector Hardware Spoofer (libxposed API 102)" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="102" />
+        <meta-data
+            android:name="xposedscope"
+            android:resource="@array/xposed_scope" />
         <activity
             android:name="ox.fzer0x.snakeloader.MainActivity"
             android:exported="true"
@@ -85,6 +101,20 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <provider
+            android:name="ox.fzer0x.snakeloader.spoofer.DeviceSpooferProvider"
+            android:authorities="ox.fzer0x.snakeloader.spoofer.provider"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+
+        <receiver
+            android:name="ox.fzer0x.snakeloader.spoofer.SpooferActivationReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="ox.fzer0x.snakeloader.action.VECTOR_ACTIVATED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

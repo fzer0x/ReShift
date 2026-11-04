@@ -1,6 +1,7 @@
 package ox.fzer0x.snakeloader.db
 
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.database.sqlite.SQLiteStatement
@@ -12,6 +13,7 @@ import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppFieldData
 import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppFilter
 import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppMethodData
 import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppPropertyData
+import java.lang.reflect.Type
 
 class Il2CppDatabaseHelper(context: Context) : SQLiteOpenHelper(
     context,
@@ -50,6 +52,49 @@ class Il2CppDatabaseHelper(context: Context) : SQLiteOpenHelper(
     private val methodListType = object : TypeToken<List<Il2CppMethodData>>() {}.type
     private val fieldListType = object : TypeToken<List<Il2CppFieldData>>() {}.type
     private val propertyListType = object : TypeToken<List<Il2CppPropertyData>>() {}.type
+
+    private fun <T> parseJsonList(json: String?, typeToken: Type): List<T> {
+        if (json.isNullOrBlank() || json == "[]" || json == "null") return emptyList()
+        return try {
+            gson.fromJson<List<T>>(json, typeToken) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun extractClassFromCursor(cursor: Cursor): Il2CppClassData {
+        val name = cursor.getString(0) ?: ""
+        val namespace = cursor.getString(1) ?: ""
+        val fullName = cursor.getString(2) ?: ""
+        val assembly = cursor.getString(3) ?: ""
+        val parent = cursor.getString(4) ?: ""
+        val isEnum = cursor.getInt(5) == 1
+        val isValueType = cursor.getInt(6) == 1
+        val isInterface = cursor.getInt(7) == 1
+        val size = cursor.getInt(8)
+        val methodsJson = cursor.getString(9)
+        val fieldsJson = cursor.getString(10)
+        val propertiesJson = cursor.getString(11)
+
+        val methods: List<Il2CppMethodData> = parseJsonList(methodsJson, methodListType)
+        val fields: List<Il2CppFieldData> = parseJsonList(fieldsJson, fieldListType)
+        val properties: List<Il2CppPropertyData> = parseJsonList(propertiesJson, propertyListType)
+
+        return Il2CppClassData(
+            name = name,
+            namespace = namespace,
+            fullName = fullName,
+            assembly = assembly,
+            parent = parent,
+            isEnum = isEnum,
+            isValueType = isValueType,
+            isInterface = isInterface,
+            size = size,
+            methods = methods,
+            fields = fields,
+            properties = properties
+        )
+    }
 
     override fun onCreate(db: SQLiteDatabase) {
         val createTableSql = """
@@ -396,47 +441,7 @@ class Il2CppDatabaseHelper(context: Context) : SQLiteOpenHelper(
         try {
             val cursor = db.rawQuery(sql, args)
             while (cursor.moveToNext()) {
-                val name = cursor.getString(0) ?: ""
-                val namespace = cursor.getString(1) ?: ""
-                val fullName = cursor.getString(2) ?: ""
-                val assembly = cursor.getString(3) ?: ""
-                val parent = cursor.getString(4) ?: ""
-                val isEnum = cursor.getInt(5) == 1
-                val isValueType = cursor.getInt(6) == 1
-                val isInterface = cursor.getInt(7) == 1
-                val size = cursor.getInt(8)
-                val methodsJson = cursor.getString(9)
-                val fieldsJson = cursor.getString(10)
-                val propertiesJson = cursor.getString(11)
-
-                val methods: List<Il2CppMethodData> = if (!methodsJson.isNullOrEmpty()) {
-                    try { gson.fromJson(methodsJson, methodListType) ?: emptyList() } catch (e: Exception) { emptyList() }
-                } else emptyList()
-
-                val fields: List<Il2CppFieldData> = if (!fieldsJson.isNullOrEmpty()) {
-                    try { gson.fromJson(fieldsJson, fieldListType) ?: emptyList() } catch (e: Exception) { emptyList() }
-                } else emptyList()
-
-                val properties: List<Il2CppPropertyData> = if (!propertiesJson.isNullOrEmpty()) {
-                    try { gson.fromJson(propertiesJson, propertyListType) ?: emptyList() } catch (e: Exception) { emptyList() }
-                } else emptyList()
-
-                list.add(
-                    Il2CppClassData(
-                        name = name,
-                        namespace = namespace,
-                        fullName = fullName,
-                        assembly = assembly,
-                        parent = parent,
-                        isEnum = isEnum,
-                        isValueType = isValueType,
-                        isInterface = isInterface,
-                        size = size,
-                        methods = methods,
-                        fields = fields,
-                        properties = properties
-                    )
-                )
+                list.add(extractClassFromCursor(cursor))
             }
             cursor.close()
         } catch (e: Exception) {
@@ -551,47 +556,7 @@ class Il2CppDatabaseHelper(context: Context) : SQLiteOpenHelper(
         try {
             val cursor = db.rawQuery(sql, args.toTypedArray())
             while (cursor.moveToNext()) {
-                val name = cursor.getString(0) ?: ""
-                val namespace = cursor.getString(1) ?: ""
-                val fullName = cursor.getString(2) ?: ""
-                val assembly = cursor.getString(3) ?: ""
-                val parent = cursor.getString(4) ?: ""
-                val isEnum = cursor.getInt(5) == 1
-                val isValueType = cursor.getInt(6) == 1
-                val isInterface = cursor.getInt(7) == 1
-                val size = cursor.getInt(8)
-                val methodsJson = cursor.getString(9)
-                val fieldsJson = cursor.getString(10)
-                val propertiesJson = cursor.getString(11)
-
-                val methods: List<Il2CppMethodData> = if (!methodsJson.isNullOrEmpty()) {
-                    try { gson.fromJson(methodsJson, methodListType) ?: emptyList() } catch (e: Exception) { emptyList() }
-                } else emptyList()
-
-                val fields: List<Il2CppFieldData> = if (!fieldsJson.isNullOrEmpty()) {
-                    try { gson.fromJson(fieldsJson, fieldListType) ?: emptyList() } catch (e: Exception) { emptyList() }
-                } else emptyList()
-
-                val properties: List<Il2CppPropertyData> = if (!propertiesJson.isNullOrEmpty()) {
-                    try { gson.fromJson(propertiesJson, propertyListType) ?: emptyList() } catch (e: Exception) { emptyList() }
-                } else emptyList()
-
-                list.add(
-                    Il2CppClassData(
-                        name = name,
-                        namespace = namespace,
-                        fullName = fullName,
-                        assembly = assembly,
-                        parent = parent,
-                        isEnum = isEnum,
-                        isValueType = isValueType,
-                        isInterface = isInterface,
-                        size = size,
-                        methods = methods,
-                        fields = fields,
-                        properties = properties
-                    )
-                )
+                list.add(extractClassFromCursor(cursor))
             }
             cursor.close()
         } catch (e: Exception) {
@@ -633,47 +598,7 @@ class Il2CppDatabaseHelper(context: Context) : SQLiteOpenHelper(
         try {
             val cursor = db.rawQuery(sql, arrayOf(packageName, pattern, pattern))
             while (cursor.moveToNext()) {
-                val name = cursor.getString(0) ?: ""
-                val namespace = cursor.getString(1) ?: ""
-                val fullName = cursor.getString(2) ?: ""
-                val assembly = cursor.getString(3) ?: ""
-                val parent = cursor.getString(4) ?: ""
-                val isEnum = cursor.getInt(5) == 1
-                val isValueType = cursor.getInt(6) == 1
-                val isInterface = cursor.getInt(7) == 1
-                val size = cursor.getInt(8)
-                val methodsJson = cursor.getString(9)
-                val fieldsJson = cursor.getString(10)
-                val propertiesJson = cursor.getString(11)
-
-                val methods: List<Il2CppMethodData> = if (!methodsJson.isNullOrEmpty()) {
-                    try { gson.fromJson(methodsJson, methodListType) ?: emptyList() } catch (e: Exception) { emptyList() }
-                } else emptyList()
-
-                val fields: List<Il2CppFieldData> = if (!fieldsJson.isNullOrEmpty()) {
-                    try { gson.fromJson(fieldsJson, fieldListType) ?: emptyList() } catch (e: Exception) { emptyList() }
-                } else emptyList()
-
-                val properties: List<Il2CppPropertyData> = if (!propertiesJson.isNullOrEmpty()) {
-                    try { gson.fromJson(propertiesJson, propertyListType) ?: emptyList() } catch (e: Exception) { emptyList() }
-                } else emptyList()
-
-                list.add(
-                    Il2CppClassData(
-                        name = name,
-                        namespace = namespace,
-                        fullName = fullName,
-                        assembly = assembly,
-                        parent = parent,
-                        isEnum = isEnum,
-                        isValueType = isValueType,
-                        isInterface = isInterface,
-                        size = size,
-                        methods = methods,
-                        fields = fields,
-                        properties = properties
-                    )
-                )
+                list.add(extractClassFromCursor(cursor))
             }
             cursor.close()
         } catch (e: Exception) {
@@ -728,6 +653,60 @@ class Il2CppDatabaseHelper(context: Context) : SQLiteOpenHelper(
             }
         }
 
+        // 3. String Pool Cross-Reference Search
+        val stringClasses = searchStringLiterals(packageName, keywords, limit = 10)
+        for (c in stringClasses) {
+            if (!map.containsKey(c.fullName)) {
+                map[c.fullName] = c
+            }
+        }
+
         return map.values.take(limit)
+    }
+
+    /**
+     * Senior AI Tool: Searches string literals and JSON symbol maps in sql.db and maps matching strings back to classes.
+     */
+    fun searchStringLiterals(packageName: String, keywords: List<String>, limit: Int = 20): List<Il2CppClassData> {
+        if (keywords.isEmpty()) return emptyList()
+        val safeKeywords = keywords.filter { it.length >= 3 }.take(5)
+        if (safeKeywords.isEmpty()) return emptyList()
+
+        val db = readableDatabase
+        val conditions = mutableListOf<String>()
+        val args = mutableListOf<String>()
+
+        conditions.add("$COL_PKG = ?")
+        args.add(packageName)
+
+        val keywordOrs = safeKeywords.map { kw ->
+            args.add("%${kw.lowercase()}%")
+            "(LOWER($COL_METHODS_JSON) LIKE ? OR LOWER($COL_FIELDS_JSON) LIKE ?)"
+        }
+        for (kw in safeKeywords) {
+            args.add("%${kw.lowercase()}%")
+        }
+
+        val sql = """
+            SELECT $COL_NAME, $COL_NAMESPACE, $COL_FULL_NAME, $COL_ASSEMBLY, $COL_PARENT,
+                   $COL_IS_ENUM, $COL_IS_VALUE_TYPE, $COL_IS_INTERFACE, $COL_CLASS_SIZE,
+                   $COL_METHODS_JSON, $COL_FIELDS_JSON, $COL_PROPERTIES_JSON
+            FROM $TABLE_CLASSES
+            WHERE $COL_PKG = ? AND (${keywordOrs.joinToString(" OR ")})
+            ORDER BY $COL_RELEVANCE_SCORE DESC
+            LIMIT $limit
+        """.trimIndent()
+
+        val list = mutableListOf<Il2CppClassData>()
+        try {
+            val cursor = db.rawQuery(sql, args.toTypedArray())
+            while (cursor.moveToNext()) {
+                list.add(extractClassFromCursor(cursor))
+            }
+            cursor.close()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in searchStringLiterals from SQLite", e)
+        }
+        return list
     }
 }

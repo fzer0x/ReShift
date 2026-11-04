@@ -95,8 +95,9 @@ class StealthConfigManager(private val context: Context, private val settings: S
             val tempFile = File(context.cacheDir, "stealth_config.sh")
             tempFile.writeText(config)
             
-            ShellExecutor.executeSimple("mkdir -p $BASE_STEALTH_PATH && cat ${tempFile.absolutePath} > $BASE_STEALTH_PATH/config.sh && chmod 644 $BASE_STEALTH_PATH/config.sh", useRoot = true)
-            ShellExecutor.executeSimple("mkdir -p $LEGACY_BASE_PATH && cat ${tempFile.absolutePath} > $LEGACY_BASE_PATH/config.sh && chmod 644 $LEGACY_BASE_PATH/config.sh", useRoot = true)
+            ShellExecutor.executeSimple("mkdir -p $BASE_STEALTH_PATH && cp ${tempFile.absolutePath} $BASE_STEALTH_PATH/config.sh && chmod 644 $BASE_STEALTH_PATH/config.sh", useRoot = true)
+            ShellExecutor.executeSimple("mkdir -p $LEGACY_BASE_PATH && cp ${tempFile.absolutePath} $LEGACY_BASE_PATH/config.sh && chmod 644 $LEGACY_BASE_PATH/config.sh", useRoot = true)
+            tempFile.delete()
             
             Log.d(TAG, "Config updated (Stealth=$isStealth): $serverName on port $port at $basePath")
         } catch (e: Exception) {

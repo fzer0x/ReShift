@@ -26,6 +26,7 @@ import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.LogManager
 import ox.fzer0x.snakeloader.OverlayService
 import ox.fzer0x.snakeloader.ScriptManager
+import ox.fzer0x.snakeloader.spoofer.DeviceSpooferManager
 import ox.fzer0x.snakeloader.ai.AiGoalPreset
 import ox.fzer0x.snakeloader.ai.AdaptiveLlmRouter
 import ox.fzer0x.snakeloader.ai.AgentExecutionMode
@@ -93,6 +94,15 @@ data class AiTelemetryInfo(
     val estimatedThermalImpact: String = "Cool (Idle)"
 )
 
+enum class DumperEngine(
+    val displayName: String,
+    val assetName: String,
+    val description: String
+) {
+    IL2CPP("Unity IL2CPP", "il2cpp_inspector_dumper.js", "Extract Unity assemblies, C# classes, methods & fields"),
+    UE4("Unreal Engine 4/5", "UE4_DUMP.js", "Extract UE4/UE5 GUObjectArray, GNames, UClasses & UFunctions")
+}
+
 enum class Il2CppFilter(val displayName: String) {
     ALL("All"),
     GAME_ONLY("Game Only"),
@@ -128,7 +138,8 @@ data class AgentLogStep(
 
 class Il2CppViewModel(
     private val fridaManager: FridaManager,
-    private val scriptManager: ScriptManager
+    private val scriptManager: ScriptManager,
+    private val spooferManager: DeviceSpooferManager? = null
 ) : ViewModel() {
 
     companion object {
@@ -218,6 +229,14 @@ class Il2CppViewModel(
 
     private val _filteredClasses = mutableStateOf<List<Il2CppClassData>>(emptyList())
     val filteredClasses: State<List<Il2CppClassData>> get() = _filteredClasses
+
+    private val _dumperEngine = mutableStateOf(DumperEngine.IL2CPP)
+    val dumperEngine: State<DumperEngine> get() = _dumperEngine
+
+    fun setDumperEngine(engine: DumperEngine) {
+        _dumperEngine.value = engine
+        _statusText.value = "Selected ${engine.displayName} dumper engine"
+    }
 
     private val _totalMatchesCount = mutableIntStateOf(0)
     val totalMatchesCount: State<Int> get() = _totalMatchesCount
@@ -418,7 +437,7 @@ class Il2CppViewModel(
         val modelSize = if (ggufModel != null) ggufModel.length() / (1024 * 1024) else 0L
 
         val isGpu = fridaManager.settings.useVulkanGpu
-        val activeBackend = if (isGpu) "Vulkan GPU (Adreno/Mali)" else "CPU (ARM64 NEON)"
+        val activeBackend = if (isGpu) "Vulkan GPU (Adreno/Mali)" else "CPU (ARM NEON)"
         val estimatedPower = if (_isGeneratingAiScript.value) (if (isGpu) 4.5 else 3.8) else 0.8
         val thermalImpact = if (_isGeneratingAiScript.value) (if (isGpu) "Moderate High" else "Warm") else "Cool (Idle)"
 
@@ -486,6 +505,7 @@ class Il2CppViewModel(
         _showAppPicker.value = false
         _statusText.value = "Selected: ${app.label} (${app.packageName})"
         _errorMessage.value = null
+        spooferManager?.onTargetAppSelected(app.packageName, app.label)
     }
 
     fun setSearchText(query: String) {
@@ -802,6 +822,11 @@ class Il2CppViewModel(
         autonomousAgentEngine.submitUserEvaluation(goalAchieved, refinedPrompt)
     }
 
+    fun getClassHierarchy(context: Context, className: String): List<Il2CppClassData> {
+        val appPkg = _selectedApp.value?.packageName ?: return emptyList()
+        return getDbHelper(context).getClassWithAncestors(appPkg, className)
+    }
+
     fun startAutonomousAgent(
         context: Context,
         userInstruction: String,
@@ -877,7 +902,11 @@ class Il2CppViewModel(
         return listOf(
             "/data/data/$pkg/cache/il2cpp_dump.json",
             "/data/user/0/$pkg/cache/il2cpp_dump.json",
-            "/data/local/tmp/il2cpp_dump.json"
+            "/data/local/tmp/il2cpp_dump.json",
+            "/data/data/$pkg/cache/ue4_dump.json",
+            "/data/user/0/$pkg/cache/ue4_dump.json",
+            "/data/local/tmp/ue4_dump.json",
+            "/sdcard/Download/ue4_dump.json"
         )
     }
 
@@ -885,8 +914,57 @@ class Il2CppViewModel(
         return listOf(
             "/data/data/$pkg/cache/il2cpp_done.flag",
             "/data/user/0/$pkg/cache/il2cpp_done.flag",
-            "/data/local/tmp/il2cpp_done.flag"
+            "/data/local/tmp/il2cpp_done.flag",
+            "/data/data/$pkg/cache/ue4_done.flag",
+            "/data/user/0/$pkg/cache/ue4_done.flag",
+            "/data/local/tmp/ue4_done.flag"
         )
+    }
+
+    fun stopInspection() {
+        pollJob?.cancel()
+        pollJob = null
+        try {
+            fridaManager.stopScript(keepServer = true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping script", e)
+        }
+        _isDumping.value = false
+        _statusText.value = "Inspection stopped by user."
+    }
+
+    fun closeTargetApp(pkg: String? = null) {
+        stopInspection()
+        viewModelScope.launch(Dispatchers.IO) {
+            val target = pkg ?: _selectedApp.value?.packageName
+            fridaManager.closeTargetApp(target)
+            _statusText.value = "Target app closed."
+        }
+    }
+
+    fun clearAll(context: Context? = null) {
+        stopInspection()
+        viewModelScope.launch(Dispatchers.IO) {
+            val app = _selectedApp.value
+            if (app != null && context != null) {
+                try {
+                    val db = getDbHelper(context)
+                    db.clearPackage(app.packageName)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error clearing database", e)
+                }
+            }
+            withContext(Dispatchers.Main) {
+                _classes.value = emptyList()
+                _filteredClasses.value = emptyList()
+                _totalMatchesCount.intValue = 0
+                _dumpProgress.intValue = 0
+                _searchText.value = ""
+                _selectedFilter.value = Il2CppFilter.ALL
+                _errorMessage.value = null
+                _statusText.value = "Inspector reset. Ready for inspection."
+            }
+        }
     }
 
     fun startInspection(context: Context) {
@@ -907,21 +985,22 @@ class Il2CppViewModel(
         _totalMatchesCount.intValue = 0
         _dumpProgress.intValue = 0
         val delaySec = _injectionDelaySeconds.intValue
-        _statusText.value = if (delaySec > 0) "Deploying dumper (Delay: ${delaySec}s)..." else "Initializing Frida and deploying dumper..."
+        val currentEngine = _dumperEngine.value
+        _statusText.value = if (delaySec > 0) "Deploying ${currentEngine.displayName} dumper (Delay: ${delaySec}s)..." else "Initializing Frida and deploying ${currentEngine.displayName} dumper..."
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val safePkg = InputValidator.escapeShellInput(pkg)
                 ShellExecutor.execute("mkdir -p /data/data/$safePkg/cache /data/local/tmp && chmod 777 /data/data/$safePkg/cache /data/local/tmp", useRoot = true)
-                ShellExecutor.execute("rm -f /data/data/$safePkg/cache/il2cpp_* /data/user/0/$safePkg/cache/il2cpp_* /data/local/tmp/il2cpp_*", useRoot = true)
+                ShellExecutor.execute("rm -f /data/data/$safePkg/cache/il2cpp_* /data/user/0/$safePkg/cache/il2cpp_* /data/local/tmp/il2cpp_* /data/data/$safePkg/cache/ue4_* /data/local/tmp/ue4_*", useRoot = true)
 
                 val rawScript = try {
-                    context.assets.open("il2cpp_inspector_dumper.js").bufferedReader().use { it.readText() }
+                    context.assets.open(currentEngine.assetName).bufferedReader().use { it.readText() }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to load script asset", e)
+                    Log.e(TAG, "Failed to load script asset: ${currentEngine.assetName}", e)
                     withContext(Dispatchers.Main) {
                         _isDumping.value = false
-                        _errorMessage.value = "Failed to load dumper asset: ${e.message}"
+                        _errorMessage.value = "Failed to load dumper asset (${currentEngine.assetName}): ${e.message}"
                     }
                     return@launch
                 }
@@ -935,7 +1014,7 @@ class Il2CppViewModel(
                 val scriptContent = scriptHeader + rawScript
 
                 withContext(Dispatchers.Main) {
-                    _statusText.value = "Launching ${app.label} with Frida..."
+                    _statusText.value = "Launching ${app.label} with Frida (${currentEngine.displayName})..."
                 }
 
                 val success = fridaManager.executeScriptContent(app.packageName, scriptContent)
@@ -987,13 +1066,21 @@ class Il2CppViewModel(
                             withContext(Dispatchers.Main) {
                                 _statusText.value = "Status: $status"
                             }
-                            if (status.startsWith("FINISHED") || status.startsWith("SAVED")) {
+                            if (status.startsWith("FINISHED") || status.startsWith("SAVED") || status.startsWith("COMPLETED")) {
+                                finished = true
+                            }
+                        } else if (msg.contains("[UE4_STATUS]")) {
+                            val status = msg.substringAfter("[UE4_STATUS]").trim()
+                            withContext(Dispatchers.Main) {
+                                _statusText.value = "UE4 Status: $status"
+                            }
+                            if (status.startsWith("FINISHED") || status.startsWith("SAVED") || status.startsWith("COMPLETED")) {
                                 finished = true
                             }
                         }
 
                         // 2. Direct Frida RPC Stream insertion via Repository
-                        if (msg.contains("IL2CPP_RPC_STREAM_BATCH")) {
+                        if (msg.contains("IL2CPP_RPC_STREAM_BATCH") || msg.contains("UE4_RPC_STREAM_BATCH")) {
                             getRepo(context).handleFridaRpcStream(packageName, msg)
                             val currentCount = getRepo(context).getClassesCount(packageName)
                             withContext(Dispatchers.Main) {

@@ -7,7 +7,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 
-class OnDeviceLlmEngine {
+class OnDeviceLlmEngine : AutoCloseable {
 
     fun interface NativeProgressCallback {
         fun onProgress(tokensGenerated: Int, partialText: String)
@@ -106,6 +106,15 @@ class OnDeviceLlmEngine {
         unloadModelLocked()
     }
 
+    override fun close() {
+        unloadModel()
+    }
+
+    @Suppress("removal")
+    protected fun finalize() {
+        unloadModel()
+    }
+
     private fun unloadModelLocked() {
         if (cachedContextPtr != 0L) {
             try {
@@ -131,7 +140,7 @@ class OnDeviceLlmEngine {
     ): Result<String> = withContext(Dispatchers.IO) {
         if (!nativeLibraryLoaded) {
             return@withContext Result.failure(
-                IllegalStateException("Native JNI inference library (libreshift_llama.so) could not be loaded. Please check system architecture (arm64-v8a).")
+                IllegalStateException("Native JNI inference library (libreshift_llama.so) could not be loaded. Please check system architecture (arm64-v8a / armeabi-v7a / x86).")
             )
         }
 

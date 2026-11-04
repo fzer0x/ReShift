@@ -36,11 +36,13 @@ class AstSemanticRanker {
 
     /**
      * Ranks and filters C# methods based on weighted AST properties, non-obfuscated names,
-     * Primitive return types, and keyword token matching with German/multilingual synonym expansion.
+     * Primitive return types, String Pool cross-references, and keyword token matching
+     * with German/multilingual synonym expansion.
      */
     fun rankAndFilterMethods(
         allClasses: List<Il2CppClassData>,
         userGoal: String,
+        stringPoolMatches: Map<String, String> = emptyMap(),
         maxResults: Int = 15
     ): List<ScoredMethod> {
         val rawUserTokens = userGoal.lowercase().split(" ", "_", ".", ",", ";", "-").filter { it.length > 2 }
@@ -104,6 +106,12 @@ class AstSemanticRanker {
                 // Rule 5: Domain Keywords
                 if (gameLogicKeywords.any { kw -> mName.contains(kw) || cName.contains(kw) }) {
                     score += 25
+                }
+
+                // Rule 6: String Pool Cross-Reference Bonus
+                val fullFqn = "${klass.fullName}.${method.name}".lowercase()
+                if (stringPoolMatches.containsKey(cName) || stringPoolMatches.containsKey(mName) || stringPoolMatches.containsKey(fullFqn)) {
+                    score += 60
                 }
 
                 if (score > 30 || rawUserTokens.isEmpty()) {

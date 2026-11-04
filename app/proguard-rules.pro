@@ -15,8 +15,10 @@
 # Keep Data Models for JSON Serialization/Deserialization
 -keep class ox.fzer0x.snakeloader.data.** { *; }
 -keep class ox.fzer0x.snakeloader.network.** { *; }
+-keep class ox.fzer0x.snakeloader.spoofer.** { *; }
 -keep class ox.fzer0x.snakeloader.CodeShareProject { *; }
 -keep class ox.fzer0x.snakeloader.DownloadedScript { *; }
+-keep class ox.fzer0x.snakeloader.ModuleMetadata { *; }
 -keep class ox.fzer0x.snakeloader.ZygiskConfig { *; }
 -keep class ox.fzer0x.snakeloader.ZygiskAppEntry { *; }
 
@@ -33,3 +35,12 @@
 -keepclassmembers class ox.fzer0x.snakeloader.ai.OnDeviceLlmEngine {
     native <methods>;
 }
+
+# Xposed and LibXposed Entry Points
+-keep class ox.fzer0x.snakeloader.xposed.** { *; }
+-keepclassmembers class ox.fzer0x.snakeloader.xposed.** { *; }
+
+# Keep App Class and Manifest Components
+-keep class ox.fzer0x.snakeloader.ReShiftApp { *; }
+-keep class ox.fzer0x.snakeloader.MainActivity { *; }
+-keep class ox.fzer0x.snakeloader.FridaService { *; }

@@ -41,11 +41,13 @@ class ZygiskManager(
         val config = if (json != null) {
             try {
                 gson.fromJson(json, ZygiskConfig::class.java).let { cfg ->
-                    val migratedApps = cfg.apps.map { app ->
-                        if (app.scriptId != null && app.scriptIds.isEmpty()) {
-                            app.copy(scriptIds = listOf(app.scriptId), scriptId = null)
-                        } else app
-                    }
+                    val migratedApps = cfg.apps
+                        .filter { it.packageName != context.packageName }
+                        .map { app ->
+                            if (app.scriptId != null && app.scriptIds.isEmpty()) {
+                                app.copy(scriptIds = listOf(app.scriptId), scriptId = null)
+                            } else app
+                        }
                     cfg.copy(apps = migratedApps)
                 }
             } catch (e: Exception) {
@@ -75,7 +77,9 @@ class ZygiskManager(
             val config = getConfig()
             Log.d(TAG, "Exporting Zygisk config (Enabled: ${config.enabled}) for ${config.apps.size} apps")
             
-            val appsWithResolvedPaths = config.apps.mapNotNull { entry ->
+            val appsWithResolvedPaths = config.apps
+                .filter { it.packageName != context.packageName }
+                .mapNotNull { entry ->
                 if (!InputValidator.validatePackageName(entry.packageName)) {
                     Log.w(TAG, "Skipping export for invalid package name: ${entry.packageName}")
                     return@mapNotNull null
@@ -89,10 +93,7 @@ class ZygiskManager(
                         
                         val fullContent = StringBuilder()
                         assignedScripts.forEach { script ->
-                            var content = script.content.replace("\r\n", "\n").trim()
-                            if (content.startsWith("*") && !content.startsWith("/*")) {
-                                content = "/*" + content
-                            }
+                            val content = script.content.replace("\r\n", "\n").trim()
                             fullContent.append("// --- Script: ${script.name} ---\n")
                             fullContent.append(content)
                             fullContent.append("\n\n")
@@ -105,8 +106,14 @@ class ZygiskManager(
                         tempFile.writeText(fullContent.toString())
                         
                         ShellExecutor.execute("cp ${tempFile.absolutePath} $remotePath && chmod 644 $remotePath", useRoot = true)
+                        tempFile.delete()
                         
                         val localScriptPath = "/data/data/${entry.packageName}/cache/re_script.js"
+                        ShellExecutor.execute(
+                            "mkdir -p /data/data/${entry.packageName}/cache && chmod 777 /data/data/${entry.packageName}/cache && cp -f $remotePath $localScriptPath && chmod 666 $localScriptPath && chcon u:object_r:app_data_file:s0 $localScriptPath 2>/dev/null || true",
+                            useRoot = true
+                        )
+
                         val gadgetConfig = """
                             {
                               "interaction": {
@@ -123,6 +130,7 @@ class ZygiskManager(
                         tempConfigFile.writeText(gadgetConfig)
                         
                         ShellExecutor.execute("cp ${tempConfigFile.absolutePath} $remoteConfigPath && chmod 644 $remoteConfigPath", useRoot = true)
+                        tempConfigFile.delete()
                         
                         entry.copy(scriptPath = remotePath)
                     } else {
@@ -138,7 +146,7 @@ class ZygiskManager(
                     val remotePath = "$SCRIPTS_ROOT/global_boot.js"
                     val tempFile = File(context.cacheDir, "global_boot.js")
                     tempFile.writeText(it.content)
-                    ShellExecutor.execute("cat ${tempFile.absolutePath} > $remotePath && chmod 644 $remotePath", useRoot = true)
+                    ShellExecutor.execute("cp ${tempFile.absolutePath} $remotePath && chmod 644 $remotePath", useRoot = true)
                     tempFile.delete()
                 }
             }
@@ -149,7 +157,8 @@ class ZygiskManager(
             val configTempFile = File(context.cacheDir, "zygisk_config.json")
             configTempFile.writeText(finalJson)
             
-            ShellExecutor.execute("cat ${configTempFile.absolutePath} > $CONFIG_PATH && chmod 644 $CONFIG_PATH", useRoot = true)
+            ShellExecutor.execute("cp ${configTempFile.absolutePath} $CONFIG_PATH && chmod 644 $CONFIG_PATH", useRoot = true)
+            configTempFile.delete()
             Log.d(TAG, "Zygisk config and scripts exported successfully (Global Enabled: ${finalConfig.enabled})")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to export Zygisk config", e)
@@ -157,6 +166,10 @@ class ZygiskManager(
     }
 
     fun toggleApp(packageName: String, enabled: Boolean) {
+        if (packageName == context.packageName) {
+            Log.w(TAG, "Cannot add self ($packageName) to Zygisk targets")
+            return
+        }
         val config = getConfig()
         val newList = if (enabled) {
             if (config.apps.any { it.packageName == packageName }) config.apps

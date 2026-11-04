@@ -34,3 +34,20 @@ ZygiskModuleScr/
 
 # Android Studio Log files
 /captures
+
+# Secrets, API Keys & Credentials
+google-services.json
+GoogleService-Info.plist
+secrets.properties
+*.env
+.env.*
+*.pem
+*.key
+*.pk8
+*.p12
+*.pfx
+
+# Build Outputs & Package Binaries
+*.apk
+*.aab
+

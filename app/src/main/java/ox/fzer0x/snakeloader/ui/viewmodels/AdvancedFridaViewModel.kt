@@ -7,9 +7,11 @@ import kotlinx.coroutines.launch
 import ox.fzer0x.snakeloader.SettingsManager
 import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.FridaBinaryDownloader
+import ox.fzer0x.snakeloader.spoofer.DeviceSpooferManager
 
 class AdvancedFridaViewModel(
-    private val settingsManager: SettingsManager
+    private val settingsManager: SettingsManager,
+    private val spooferManager: DeviceSpooferManager? = null
 ) : ViewModel() {
     companion object {
         private const val TAG = "AdvancedFridaViewModel"
@@ -61,6 +63,9 @@ class AdvancedFridaViewModel(
 
     fun setCurrentPackage(packageName: String) {
         currentPackage.value = packageName
+        if (packageName.isNotEmpty()) {
+            spooferManager?.onTargetAppSelected(packageName)
+        }
     }
 
     fun addCustomScript(fileName: String, content: String) {
@@ -91,14 +96,28 @@ class AdvancedFridaViewModel(
         customScriptContents.value = emptyMap()
     }
 
+    val latestGitHubRelease = mutableStateOf("")
+
+    fun checkLatestVersion(fridaManager: FridaManager) {
+        viewModelScope.launch {
+            val downloader = FridaBinaryDownloader(fridaManager.context, fridaManager.stealthConfig)
+            val latest = downloader.getLatestVersion()
+            if (latest != null) {
+                latestGitHubRelease.value = latest
+            }
+        }
+    }
+
     fun downloadBinary(fridaManager: FridaManager, type: String) {
         viewModelScope.launch {
             isDownloading.value = true
-            downloadProgress.value = "Fetching latest version..."
-            
+            downloadProgress.value = "Fetching latest release..."
+
             val downloader = FridaBinaryDownloader(fridaManager.context, fridaManager.stealthConfig)
-            val latestVersion = downloader.getLatestVersion()
-            
+            val latestVersion = latestGitHubRelease.value.ifEmpty {
+                downloader.getLatestVersion()?.also { latestGitHubRelease.value = it }
+            }
+
             if (latestVersion == null) {
                 downloadProgress.value = "Failed to fetch version info"
                 isDownloading.value = false
@@ -111,13 +130,54 @@ class AdvancedFridaViewModel(
             }
 
             if (success) {
-                downloadProgress.value = "Installed successfully!"
+                downloadProgress.value = "$type v$latestVersion installed!"
                 setFridaStatus(fridaManager.getFridaStatus())
                 setAvailableBinaries(fridaManager.getAvailableBinaries())
             } else {
-                downloadProgress.value = "Installation failed"
+                downloadProgress.value = "Installation of $type failed"
             }
-            
+
+            isDownloading.value = false
+        }
+    }
+
+    fun downloadAllBinaries(fridaManager: FridaManager) {
+        viewModelScope.launch {
+            isDownloading.value = true
+            downloadProgress.value = "Fetching latest GitHub release..."
+
+            val downloader = FridaBinaryDownloader(fridaManager.context, fridaManager.stealthConfig)
+            val latestVersion = latestGitHubRelease.value.ifEmpty {
+                downloader.getLatestVersion()?.also { latestGitHubRelease.value = it }
+            }
+
+            if (latestVersion == null) {
+                downloadProgress.value = "Failed to fetch version info"
+                isDownloading.value = false
+                return@launch
+            }
+
+            val binaryTypes = listOf("server", "inject", "cli", "gadget")
+            var allSuccess = true
+
+            for (type in binaryTypes) {
+                downloadProgress.value = "Downloading $type ($latestVersion)..."
+                val success = downloader.downloadAndInstall(latestVersion, type) { progress: String ->
+                    downloadProgress.value = progress
+                }
+                if (!success) {
+                    allSuccess = false
+                }
+            }
+
+            if (allSuccess) {
+                downloadProgress.value = "All Frida binaries (v$latestVersion) installed!"
+            } else {
+                downloadProgress.value = "Some binaries failed to install"
+            }
+
+            setFridaStatus(fridaManager.getFridaStatus())
+            setAvailableBinaries(fridaManager.getAvailableBinaries())
             isDownloading.value = false
         }
     }

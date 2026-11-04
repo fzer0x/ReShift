@@ -1,27 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Stylized 'S' for SHIFT - Bold and Geometric -->
+    <!-- Outer Orbit Ring 1 (Cyan/Teal Cyber Orbit - Radius 33) -->
     <path
-        android:fillColor="#00695C"
-        android:pathData="M32,32 h44 v12 H44 v8 h32 v32 H32 V72 h32 V64 H32 V32 Z" />
+        android:fillColor="#00000000"
+        android:pathData="M54,54 m-33,0 a33,33 0 1,0 66,0 a33,33 0 1,0 -66,0"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.75"
+        android:strokeColor="#00E5FF" />
 
-    <!-- Dot for RE/Accent - Matches the Home screen branding -->
+    <!-- Orbit Ring 1 Accent Tech Dots / Arcs -->
     <path
-        android:fillColor="#B2DFDB"
-        android:pathData="M18,32 a5,5 0,1 0,10 0 a5,5 0,1 0,-10 0" />
+        android:fillColor="#00E5FF"
+        android:pathData="M54,20 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0" />
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,86 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0" />
 
-    <!-- Minimalist Bracket/Shift indicator -->
+    <!-- Outer Orbit Ring 2 (Emerald Green Orbit - Radius 27) -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.2"
-        android:pathData="M82,32 v52 h10 V32 Z" />
+        android:fillColor="#00000000"
+        android:pathData="M54,54 m-27,0 a27,27 0 1,0 54,0 a27,27 0 1,0 -54,0"
+        android:strokeWidth="1.5"
+        android:strokeAlpha="0.85"
+        android:strokeColor="#00E676" />
 
+    <!-- Orbit Ring 2 Accent Tech Dots -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillAlpha="0.2"
-        android:pathData="M74,32 h18 v8 H82 Z M74,84 h18 v-8 H82 Z" />
+        android:fillColor="#00E676"
+        android:pathData="M26,54 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0" />
+    <path
+        android:fillColor="#00E676"
+        android:pathData="M80,54 a1.5,1.5 0 1,0 3,0 a1.5,1.5 0 1,0 -3,0" />
+
+    <!-- Central ReShift Badge Core (Radius 22) -->
+    <path
+        android:fillColor="#141A21"
+        android:pathData="M54,54 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,54 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0"
+        android:strokeWidth="1.2"
+        android:strokeColor="#00E5FF" />
+
+    <!-- 'RE' Branding (Muted Silver / Cyan-White) -->
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M30,49 h5.5 c2,0 3.5,1.2 3.5,3 c0,1.5 -1,2.5 -2.2,2.8 l2.7,4.2 h-2.8 l-2.4,-3.8 h-1.8 v3.8 h-2.5 z M32.5,51.2 v2.6 h2.8 c0.8,0 1.5,-0.5 1.5,-1.3 c0,-0.8 -0.7,-1.3 -1.5,-1.3 z" />
+    <path
+        android:fillColor="#B0BEC5"
+        android:pathData="M40,49 h6 v2.2 h-3.5 v2 h3 v2 h-3 v2.6 h3.5 v2.2 h-6 z" />
+
+    <!-- 'SHIFT' Branding (Glowing Primary Cyan / Emerald) -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M48,49 h5.5 v2.2 h-3.2 v1.5 h3.2 v6.3 h-5.5 v-2.2 h3.2 v-1.6 h-3.2 z" />
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54.5,49 h2.4 v3.5 h2.0 v-3.5 h2.4 v10 h-2.4 v-4.3 h-2.0 v4.3 h-2.4 z" />
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M62.5,49 h2.4 v10 h-2.4 z" />
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M66,49 h5.2 v2.2 h-2.8 v1.8 h2.5 v2.2 h-2.5 v3.8 h-2.4 z" />
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M72,49 h5.5 v2.2 h-1.6 v7.8 h-2.3 v-7.8 h-1.6 z" />
+
 </vector>

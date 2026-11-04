@@ -1,5 +1,6 @@
 package ox.fzer0x.snakeloader.ui.screens
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -31,8 +32,14 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ox.fzer0x.snakeloader.DownloadedScript
+import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.ModuleMetadata
 import ox.fzer0x.snakeloader.ScriptManager
 import ox.fzer0x.snakeloader.ui.components.ReShiftCard
@@ -41,13 +48,15 @@ import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
 import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
 import ox.fzer0x.snakeloader.ui.components.BadgePill
 import ox.fzer0x.snakeloader.ui.components.SectionHeader
-import kotlinx.coroutines.launch
+import ox.fzer0x.snakeloader.ui.components.findActivity
+import java.io.File
 import java.net.URL
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModulesScreen(
     scriptManager: ScriptManager,
+    fridaManager: FridaManager,
     onNavigateToAssetBrowser: () -> Unit,
     onNavigateToCodeShare: () -> Unit,
     onNavigateToToolbox: () -> Unit,
@@ -56,10 +65,10 @@ fun ModulesScreen(
 ) {
     var allScripts by remember { mutableStateOf(scriptManager.getScripts()) }
     var searchQuery by remember { mutableStateOf("") }
-    
+
     var showFabMenu by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-    
+
     val context = LocalContext.current
 
     fun refresh() {
@@ -111,6 +120,14 @@ fun ModulesScreen(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
+                            text = { Text("Close") },
+                            onClick = {
+                                showMenu = false
+                                context.findActivity()?.finishAndRemoveTask()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = "Close ReShift", tint = MaterialTheme.colorScheme.error) }
+                        )
+                        DropdownMenuItem(
                             text = { Text("Frida Toolbox") },
                             onClick = {
                                 showMenu = false
@@ -153,16 +170,16 @@ fun ModulesScreen(
                             label = "Browse CodeShare",
                             icon = Icons.Default.Public,
                             color = MaterialTheme.colorScheme.tertiaryContainer,
-                            onClick = { 
+                            onClick = {
                                 showFabMenu = false
-                                onNavigateToCodeShare() 
+                                onNavigateToCodeShare()
                             }
                         )
                         FabMenuItem(
                             label = "Import from ReShift",
                             icon = Icons.Default.Extension,
                             color = MaterialTheme.colorScheme.secondaryContainer,
-                            onClick = { 
+                            onClick = {
                                 showFabMenu = false
                                 onNavigateToAssetBrowser()
                             }
@@ -171,14 +188,14 @@ fun ModulesScreen(
                             label = "Import from Storage",
                             icon = Icons.Default.FileOpen,
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            onClick = { 
+                            onClick = {
                                 showFabMenu = false
                                 filePickerLauncher.launch("application/javascript")
                             }
                         )
                     }
                 }
-                
+
                 FloatingActionButton(
                     onClick = { showFabMenu = !showFabMenu },
                     containerColor = if (showFabMenu) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
@@ -252,10 +269,10 @@ fun ModulesScreen(
                 } else {
                     items(filteredScripts, key = { it.id }) { script ->
                         ModuleListItem(
-                            script = script, 
-                            scriptManager = scriptManager, 
+                            script = script,
+                            scriptManager = scriptManager,
                             onRefresh = { refresh() },
-                            onEdit = { 
+                            onEdit = {
                                 if (script.metadata.noEdit) {
                                     scope.launch {
                                         snackbarHostState.showSnackbar("This script is protected and cannot be edited.")
@@ -267,7 +284,7 @@ fun ModulesScreen(
                         )
                     }
                 }
-                
+
                 item { Spacer(Modifier.height(80.dp)) }
             }
         }
@@ -298,6 +315,36 @@ fun FabMenuItem(
     }
 }
 
+private fun shareModule(context: Context, script: DownloadedScript) {
+    if (script.content.isBlank()) {
+        Toast.makeText(context, "Module content is empty", Toast.LENGTH_SHORT).show()
+        return
+    }
+    try {
+        val sanitizedName = script.name.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+        val fileName = if (sanitizedName.endsWith(".js")) sanitizedName else "$sanitizedName.js"
+        val cacheFile = File(context.cacheDir, fileName)
+        cacheFile.writeText(script.content)
+
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.provider",
+            cacheFile
+        )
+
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, script.name)
+            putExtra(Intent.EXTRA_TEXT, script.content)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share Module"))
+    } catch (e: Exception) {
+        Toast.makeText(context, "Failed to share module: ${e.message}", Toast.LENGTH_SHORT).show()
+    }
+}
+
 @Composable
 fun ModuleListItem(
     script: DownloadedScript,
@@ -313,12 +360,14 @@ fun ModuleListItem(
     val sourceIcon = when {
         script.repository == "ReShift Modules" -> Icons.Default.Extension
         script.repository.contains("frida-codeshare", ignoreCase = true) -> Icons.Default.Public
+        script.repository == "Hardware Spoofer" -> Icons.Default.Fingerprint
         else -> Icons.Default.Description
     }
 
     val sourceColor = when {
         script.repository == "ReShift Modules" -> MaterialTheme.colorScheme.primary
         script.repository.contains("frida-codeshare", ignoreCase = true) -> MaterialTheme.colorScheme.tertiary
+        script.repository == "Hardware Spoofer" -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.secondary
     }
 
@@ -327,7 +376,7 @@ fun ModuleListItem(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val icon = if (script.metadata.noEdit) Icons.Default.Lock else sourceIcon
                 val tint = if (script.metadata.noEdit) MaterialTheme.colorScheme.error else sourceColor
-                
+
                 Box(
                     modifier = Modifier
                         .size(42.dp)
@@ -336,9 +385,9 @@ fun ModuleListItem(
                 ) {
                     Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
                 }
-                
+
                 Spacer(Modifier.width(14.dp))
-                
+
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -378,10 +427,10 @@ fun ModuleListItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                
+
                 Switch(
                     checked = isEnabled,
-                    onCheckedChange = { 
+                    onCheckedChange = {
                         isEnabled = it
                         scriptManager.setEnabled(script.id, it)
                         onRefresh()
@@ -389,7 +438,7 @@ fun ModuleListItem(
                     modifier = Modifier.scale(0.85f)
                 )
             }
-            
+
             val hasDescription = !script.description.isNullOrBlank()
             val hasUrl = script.repository.startsWith("http")
 
@@ -410,12 +459,12 @@ fun ModuleListItem(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        
+
                         if (hasUrl) {
                             if (hasDescription) Spacer(Modifier.height(8.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clickable { 
+                                modifier = Modifier.clickable {
                                     try {
                                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(script.repository))
                                         context.startActivity(intent)
@@ -437,12 +486,12 @@ fun ModuleListItem(
                     }
                 }
             }
-            
+
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 12.dp),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
             )
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -450,9 +499,9 @@ fun ModuleListItem(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.AutoMirrored.Filled.Label, 
-                        null, 
-                        modifier = Modifier.size(14.dp), 
+                        Icons.AutoMirrored.Filled.Label,
+                        null,
+                        modifier = Modifier.size(14.dp),
                         tint = if (appCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.width(6.dp))
@@ -463,12 +512,12 @@ fun ModuleListItem(
                         color = if (appCount > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                     )
                 }
-                
+
                 Row {
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(
-                            if (script.metadata.noEdit) Icons.Default.Lock else Icons.Default.Edit, 
-                            null, 
+                            if (script.metadata.noEdit) Icons.Default.Lock else Icons.Default.Edit,
+                            null,
                             modifier = Modifier.size(18.dp),
                             tint = if (script.metadata.noEdit) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                         )
@@ -481,6 +530,14 @@ fun ModuleListItem(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text("Share") },
+                                onClick = {
+                                    showMenu = false
+                                    shareModule(context, script)
+                                },
+                                leadingIcon = { Icon(Icons.Default.Share, null) }
+                            )
                             DropdownMenuItem(
                                 text = { Text("Delete") },
                                 onClick = {

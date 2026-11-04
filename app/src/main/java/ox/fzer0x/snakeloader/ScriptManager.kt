@@ -202,22 +202,30 @@ class ScriptManager(private val context: Context) {
     fun importScriptFromAsset(fileName: String) {
         try {
             val content = context.assets.open("ReShiftModules/$fileName").bufferedReader().use { it.readText() }
+            importScriptFromReShift(fileName, content)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to import script from ReShiftModules", e)
+        }
+    }
+
+    fun importScriptFromReShift(relativePath: String, content: String) {
+        try {
             val result = extractMetadata(content)
             val extractedName = result["name"] as? String
             val metadata = result["metadata"] as ModuleMetadata
-            val description = (result["description"] as? String) ?: "Built-in module from ReShift"
+            val description = (result["description"] as? String) ?: "Module from ReShift GitHub repository"
 
             val script = DownloadedScript(
-                id = "reshift/$fileName",
-                name = extractedName ?: fileName.removeSuffix(".js"),
+                id = "reshift/$relativePath",
+                name = extractedName ?: relativePath.substringAfterLast("/").removeSuffix(".js"),
                 content = content,
                 repository = "ReShift Modules",
-                path = fileName,
+                path = relativePath,
                 description = description
             )
             addScript(script)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to import script from ReShiftModules", e)
+            Log.e(TAG, "Failed to import script from ReShift Modules", e)
         }
     }
 

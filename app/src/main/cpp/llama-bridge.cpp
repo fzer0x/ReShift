@@ -79,7 +79,7 @@ Java_ox_fzer0x_snakeloader_ai_OnDeviceLlmEngine_nativeInitModel(
     llama_model_params model_params = llama_model_default_params();
     model_params.n_gpu_layers = use_gpu ? 99 : 0; // Offload 99 layers if GPU requested, 0 for CPU NEON
 
-    LOGI("Loading llama.cpp model from file: %s (Backend: %s)", path.c_str(), use_gpu ? "Vulkan GPU (n_gpu_layers=99)" : "CPU ARM64 NEON");
+    LOGI("Loading llama.cpp model from file: %s (Backend: %s)", path.c_str(), use_gpu ? "Vulkan GPU (n_gpu_layers=99)" : "CPU ARM NEON");
     session->model = llama_load_model_from_file(path.c_str(), model_params);
     if (!session->model) {
         LOGE("Failed to load llama.cpp model from %s", path.c_str());

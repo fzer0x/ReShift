@@ -7,6 +7,7 @@ import org.koin.core.context.startKoin
 import ox.fzer0x.snakeloader.di.appModule
 import ox.fzer0x.snakeloader.security.SecurityStateManager
 import ox.fzer0x.snakeloader.security.EncryptionManager
+import ox.fzer0x.snakeloader.spoofer.SpooferNotificationHelper
 
 class ReShiftApp : Application() {
     companion object {
@@ -23,6 +24,8 @@ class ReShiftApp : Application() {
             androidContext(this@ReShiftApp)
             modules(appModule)
         }
+
+        SpooferNotificationHelper.cancelAllNotifications(this)
         
         Log.i(TAG, "ReShift application initialized")
     }

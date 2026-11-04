@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="xposed_scope">
+        <!-- Default scope for libxposed API 102 / LSPosed framework -->
+        <item>android</item>
+    </string-array>
+</resources>

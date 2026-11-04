@@ -77,10 +77,10 @@ fun AppDetailsScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { 
+                onClick = {
                     if (scriptRunning) {
                         scope.launch { fridaManager.stopScript() }
-                    } else launchApp() 
+                    } else launchApp()
                 },
                 containerColor = if (scriptRunning) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
                 contentColor = if (scriptRunning) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
@@ -95,7 +95,7 @@ fun AppDetailsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { SectionHeader("Active Modules") }
-            
+
             if (assignedScripts.isEmpty()) {
                 item {
                     ReShiftCard {
@@ -113,13 +113,13 @@ fun AppDetailsScreen(
                     ReShiftCard {
                         ListItem(
                             headlineContent = { Text(script.name, fontWeight = FontWeight.Bold) },
-                            supportingContent = { 
+                            supportingContent = {
                                 Column {
                                     Text(script.repository, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
                                     if (!script.description.isNullOrBlank()) {
                                         Spacer(Modifier.height(4.dp))
                                         Text(
-                                            script.description, 
+                                            script.description,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             maxLines = 2,
@@ -167,7 +167,7 @@ fun AppDetailsScreen(
                     Text("Add Module", fontWeight = FontWeight.Bold)
                 }
             }
-            
+
             item { Spacer(Modifier.height(80.dp)) }
         }
 

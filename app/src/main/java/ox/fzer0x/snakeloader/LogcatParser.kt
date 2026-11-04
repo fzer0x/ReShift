@@ -11,7 +11,7 @@ object LogcatParser {
     
     private val BASIC_PATTERN = Pattern.compile("""^([VDIWEF])/(.*?):\s+(.*)$""")
 
-    private val SCRIPT_TAGS = listOf("Snakeloader", "Frida", "Zygisk", "LSPosed", "console", "V8", "QuickJS", "NaturalMotion", "Unity")
+    private val SCRIPT_TAGS = listOf("Snakeloader", "ReShift", "Frida", "Zygisk", "LSPosed", "console", "V8", "QuickJS", "NaturalMotion", "Unity")
 
     data class ParsedLog(
         val timestamp: String,
@@ -61,7 +61,7 @@ object LogcatParser {
             return createParsedLog(line, "", tag, priority, message)
         }
 
-        val isRelated = line.contains("Snakeloader", ignoreCase = true)
+        val isRelated = line.contains("Snakeloader", ignoreCase = true) || line.contains("ReShift", ignoreCase = true) || line.contains("Frida", ignoreCase = true)
         return ParsedLog(
             timestamp = "",
             tag = if (isRelated) "Related" else "System",
@@ -72,7 +72,9 @@ object LogcatParser {
     }
 
     private fun createParsedLog(original: String, timestamp: String, tag: String, priority: String, message: String): ParsedLog {
-        val containsMarker = message.contains("[Snakeloader]", ignoreCase = true)
+        val containsMarker = message.contains("[Snakeloader]", ignoreCase = true) ||
+                             message.contains("[ReShift", ignoreCase = true) ||
+                             SCRIPT_TAGS.any { tag.contains(it, ignoreCase = true) }
         
         var scriptName: String? = null
         var cleanMessage = message

@@ -41,6 +41,7 @@ import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
 import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
 import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
 import ox.fzer0x.snakeloader.ui.components.SectionHeader
+import ox.fzer0x.snakeloader.ui.components.FridaBinaryManagerCard
 import ox.fzer0x.snakeloader.ui.components.LaunchParametersSection
 import ox.fzer0x.snakeloader.ui.components.ConfigGroup
 import ox.fzer0x.snakeloader.ui.theme.SuccessGreen
@@ -69,7 +70,7 @@ fun AdvancedFridaScreen(
             viewModel.setAvailableBinaries(fridaManager.getAvailableBinaries())
             viewModel.setFridaStatus(fridaManager.getFridaStatus())
         }
-        
+
         if (viewModel.currentPackage.value.isEmpty()) {
             viewModel.setCurrentPackage(packageName)
         }
@@ -88,9 +89,9 @@ fun AdvancedFridaScreen(
     val filteredApps = if (searchQuery.isEmpty()) {
         allApps
     } else {
-        allApps.filter { 
-            it.label.contains(searchQuery, ignoreCase = true) || 
-            it.packageName.contains(searchQuery, ignoreCase = true) 
+        allApps.filter {
+            it.label.contains(searchQuery, ignoreCase = true) ||
+            it.packageName.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -104,7 +105,7 @@ fun AdvancedFridaScreen(
 
     val assetScripts = remember {
         try {
-            context.assets.list("")?.filter { it.endsWith(".js") }?.map { 
+            context.assets.list("")?.filter { it.endsWith(".js") }?.map {
                 Pair(it, it.removeSuffix(".js").replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() } })
             } ?: emptyList()
         } catch (e: Exception) {
@@ -140,7 +141,7 @@ fun AdvancedFridaScreen(
                 title = "Advanced Config",
                 onBack = onBack,
                 actions = {
-                    IconButton(onClick = { 
+                    IconButton(onClick = {
                         scope.launch { viewModel.setFridaStatus(fridaManager.getFridaStatus()) }
                     }) {
                         Icon(Icons.Default.Refresh, null)
@@ -184,7 +185,7 @@ fun AdvancedFridaScreen(
 
             item {
                 SectionHeader("4. DEPLOYMENT")
-                
+
                 OutlinedButton(
                     onClick = {
                         viewModel.setExecuting(true)
@@ -210,7 +211,7 @@ fun AdvancedFridaScreen(
                 }
 
                 Spacer(Modifier.height(12.dp))
-                
+
                 Button(
                     onClick = { showScriptSelector = true },
                     modifier = Modifier
@@ -228,7 +229,7 @@ fun AdvancedFridaScreen(
                     }
                 }
             }
-            
+
             item { Spacer(Modifier.height(40.dp)) }
         }
     }
@@ -312,7 +313,7 @@ private fun FridaStatusHeader(status: Map<String, Any>) {
                     color = if (isSmooth) SuccessGreen else MaterialTheme.colorScheme.error
                 )
             }
-            
+
             if (selectedMode != "auto" && runningBinary != "none" && runningBinary != selectedMode && runningBinary != "server") {
                 Text(
                     "Note: Selected $selectedMode but $runningBinary is currently active.",
@@ -385,28 +386,50 @@ private fun ConfigurationSection(viewModel: AdvancedFridaViewModel, fridaManager
 
             ConfigGroup("BINARY") {
                 val available = viewModel.availableBinaries.value
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    StrategyChip("Auto", viewModel.selectedFridaBinary.value == "auto", modifier = Modifier.weight(1f)) {
-                        viewModel.setSelectedFridaBinary("auto")
-                        fridaManager.selectedFridaBinary = "auto"
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        StrategyChip("Auto", viewModel.selectedFridaBinary.value == "auto", modifier = Modifier.weight(1f)) {
+                            viewModel.setSelectedFridaBinary("auto")
+                            fridaManager.selectedFridaBinary = "auto"
+                        }
+                        StrategyChip(
+                            label = "Server",
+                            selected = viewModel.selectedFridaBinary.value == "server",
+                            available = available["server"] ?: true,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            viewModel.setSelectedFridaBinary("server")
+                            fridaManager.selectedFridaBinary = "server"
+                        }
+                        StrategyChip(
+                            label = "Inject",
+                            selected = viewModel.selectedFridaBinary.value == "inject",
+                            available = available["inject"] ?: true,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            viewModel.setSelectedFridaBinary("inject")
+                            fridaManager.selectedFridaBinary = "inject"
+                        }
                     }
-                    StrategyChip(
-                        label = "CLI",
-                        selected = viewModel.selectedFridaBinary.value == "cli", 
-                        available = available["cli"] ?: false,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        viewModel.setSelectedFridaBinary("cli")
-                        fridaManager.selectedFridaBinary = "cli"
-                    }
-                    StrategyChip(
-                        label = "Inject", 
-                        selected = viewModel.selectedFridaBinary.value == "inject", 
-                        available = available["inject"] ?: false,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        viewModel.setSelectedFridaBinary("inject")
-                        fridaManager.selectedFridaBinary = "inject"
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        StrategyChip(
+                            label = "CLI",
+                            selected = viewModel.selectedFridaBinary.value == "cli",
+                            available = available["cli"] ?: true,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            viewModel.setSelectedFridaBinary("cli")
+                            fridaManager.selectedFridaBinary = "cli"
+                        }
+                        StrategyChip(
+                            label = "Gadget",
+                            selected = viewModel.selectedFridaBinary.value == "gadget",
+                            available = available["gadget"] ?: true,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            viewModel.setSelectedFridaBinary("gadget")
+                            fridaManager.selectedFridaBinary = "gadget"
+                        }
                     }
                 }
             }
@@ -433,7 +456,7 @@ private fun StrategyChip(label: String, selected: Boolean, available: Boolean = 
         selected = selected,
         onClick = onClick,
         modifier = modifier,
-        label = { 
+        label = {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 if (!available) {
@@ -559,68 +582,5 @@ private fun ScriptSelectorDialog(
 
 @Composable
 private fun BinaryManagementSection(viewModel: AdvancedFridaViewModel, fridaManager: FridaManager) {
-    val status = viewModel.fridaStatus.value
-    val availableCli = status["available_cli"] as? Boolean ?: false
-    val availableInject = status["available_inject"] as? Boolean ?: false
-    val fridaVersion = status["frida_version"] as? String ?: "Unknown"
-
-    ReShiftCard {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Download, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(8.dp))
-                Text("FRIDA COMPONENTS", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.weight(1f))
-                Text("v$fridaVersion", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-            }
-
-            if (viewModel.isDownloading.value) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.primary)
-                Text(viewModel.downloadProgress.value, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                BinaryActionChip(
-                    label = "Server",
-                    isInstalled = fridaManager.binaryManager.isServerAvailable(),
-                    onDownload = { viewModel.downloadBinary(fridaManager, "server") },
-                    modifier = Modifier.weight(1f),
-                    enabled = !viewModel.isDownloading.value
-                )
-                BinaryActionChip(
-                    label = "Inject/CLI",
-                    isInstalled = availableInject || availableCli,
-                    onDownload = { viewModel.downloadBinary(fridaManager, "cli") },
-                    modifier = Modifier.weight(1f),
-                    enabled = !viewModel.isDownloading.value
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun BinaryActionChip(label: String, isInstalled: Boolean, onDownload: () -> Unit, modifier: Modifier, enabled: Boolean) {
-    Surface(
-        onClick = { if (!isInstalled && enabled) onDownload() },
-        modifier = modifier,
-        shape = ReShiftChipShape,
-        color = if (isInstalled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-        border = BorderStroke(1.dp, if (isInstalled) MaterialTheme.colorScheme.outline.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                if (isInstalled) Icons.Default.CheckCircle else Icons.Default.Download,
-                null,
-                modifier = Modifier.size(14.dp),
-                tint = if (isInstalled) SuccessGreen else MaterialTheme.colorScheme.primary
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-        }
-    }
+    FridaBinaryManagerCard(fridaManager = fridaManager)
 }

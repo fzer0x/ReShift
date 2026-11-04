@@ -37,12 +37,18 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.LogManager
 import ox.fzer0x.snakeloader.ui.components.ReShiftCard
 import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
 import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.components.findActivity
 import ox.fzer0x.snakeloader.ui.theme.ErrorRed
 import ox.fzer0x.snakeloader.ui.theme.InfoBlue
 import ox.fzer0x.snakeloader.ui.theme.SuccessGreen
@@ -50,20 +56,23 @@ import ox.fzer0x.snakeloader.ui.theme.WarningOrange
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlinx.coroutines.launch
 import ox.fzer0x.snakeloader.LogcatReader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogsScreen(onNavigateToSettings: () -> Unit) {
+fun LogsScreen(
+    fridaManager: FridaManager,
+    onNavigateToSettings: () -> Unit
+) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf(
         "Scripts" to Icons.Default.Description,
         "Logcat" to Icons.AutoMirrored.Filled.List,
         "Frida CLI" to Icons.Default.Terminal
     )
-    
+
     var searchQuery by remember { mutableStateOf("") }
     var isSearchExpanded by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -74,7 +83,7 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
     val scriptLogs = LogManager.logs
     val logcatLogs = LogManager.logcatEntries
     val fridaLogs = LogManager.fridaLogs
-    
+
     val timeFormat = remember { SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()) }
     var showMenu by remember { mutableStateOf(false) }
 
@@ -89,10 +98,10 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
             2 -> fridaLogs
             else -> scriptLogs
         }
-        
+
         baseLogs.filter { entry ->
             val matchesSearch = if (searchQuery.isEmpty()) true else {
-                entry.message.contains(searchQuery, ignoreCase = true) || 
+                entry.message.contains(searchQuery, ignoreCase = true) ||
                 (entry.tag?.contains(searchQuery, ignoreCase = true) == true) ||
                 entry.packageName.contains(searchQuery, ignoreCase = true)
             }
@@ -171,6 +180,14 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
                                 onDismissRequest = { showMenu = false }
                             ) {
                                 DropdownMenuItem(
+                                    text = { Text("Close") },
+                                    onClick = {
+                                        showMenu = false
+                                        context.findActivity()?.finishAndRemoveTask()
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Close, contentDescription = "Close ReShift", tint = MaterialTheme.colorScheme.error) }
+                                )
+                                DropdownMenuItem(
                                     text = { Text("Share current view") },
                                     onClick = {
                                         showMenu = false
@@ -180,7 +197,7 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
                                 )
                                 DropdownMenuItem(
                                     text = { Text("Clear All") },
-                                    onClick = { 
+                                    onClick = {
                                         showMenu = false
                                         when (selectedTab) {
                                             0 -> LogManager.clearLogs()
@@ -214,7 +231,7 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
                         }
                     )
                 }
-                
+
                 PrimaryTabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -234,7 +251,7 @@ fun LogsScreen(onNavigateToSettings: () -> Unit) {
                         )
                     }
                 }
-                
+
                 LazyRow(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -346,7 +363,7 @@ fun EmptyLogsView(padding: PaddingValues, selectedTab: Int, isFiltering: Boolean
                 color = MaterialTheme.colorScheme.outline
             )
             Text(
-                text = if (isFiltering) "Try adjusting your search or level filters." 
+                text = if (isFiltering) "Try adjusting your search or level filters."
                        else "Logs will appear here once injection starts.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline

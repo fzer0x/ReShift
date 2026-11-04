@@ -33,7 +33,7 @@ class Il2CppRepository(
      */
     suspend fun handleFridaRpcStream(packageName: String, jsonMessage: String) = withContext(Dispatchers.IO) {
         try {
-            if (!jsonMessage.contains("IL2CPP_RPC_STREAM_BATCH")) return@withContext
+            if (!jsonMessage.contains("IL2CPP_RPC_STREAM_BATCH") && !jsonMessage.contains("UE4_RPC_STREAM_BATCH")) return@withContext
 
             val jsonStr = if (jsonMessage.trim().startsWith("{")) jsonMessage.trim() else jsonMessage.substringAfter("{", "").let { if (it.isNotEmpty()) "{$it" else "" }
             if (jsonStr.isEmpty()) return@withContext
@@ -68,6 +68,14 @@ class Il2CppRepository(
         filter: Il2CppFilter = Il2CppFilter.ALL
     ): Int = withContext(Dispatchers.IO) {
         dbHelper.getClassesCount(packageName, query, filter)
+    }
+
+    suspend fun getClassWithAncestors(
+        packageName: String,
+        className: String,
+        maxDepth: Int = 3
+    ): List<Il2CppClassData> = withContext(Dispatchers.IO) {
+        dbHelper.getClassWithAncestors(packageName, className, maxDepth)
     }
 
     suspend fun clearPackage(packageName: String) = withContext(Dispatchers.IO) {

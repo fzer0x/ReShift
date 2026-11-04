@@ -1,5 +1,8 @@
 package ox.fzer0x.snakeloader.ui.components
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -127,7 +130,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(top = 16.dp, bottom = 6.dp),
+        modifier = modifier.padding(top = 8.dp, bottom = 4.dp),
         letterSpacing = 1.2.sp
     )
 }
@@ -243,6 +246,8 @@ fun BadgePill(
             fontWeight = FontWeight.Bold,
             color = textColor,
             fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
     }
@@ -284,4 +289,13 @@ fun InfoCard(
             }
         }
     }
+}
+
+fun Context.findActivity(): Activity? {
+    var ctx = this
+    while (ctx is ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
 }

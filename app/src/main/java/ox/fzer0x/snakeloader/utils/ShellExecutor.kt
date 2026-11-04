@@ -1,11 +1,22 @@
 package ox.fzer0x.snakeloader.utils
 
 import android.util.Log
+import com.topjohnwu.superuser.CallbackList
+import com.topjohnwu.superuser.Shell
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
 object ShellExecutor {
     private const val TAG = "ShellExecutor"
+
+    init {
+        Shell.enableVerboseLogging = false
+        Shell.setDefaultBuilder(
+            Shell.Builder.create()
+                .setFlags(Shell.FLAG_REDIRECT_STDERR)
+                .setTimeout(15)
+        )
+    }
 
     data class CommandResult(
         val exitCode: Int,
@@ -13,6 +24,29 @@ object ShellExecutor {
         val stderr: String
     ) {
         val isSuccess: Boolean get() = exitCode == 0
+    }
+
+    /**
+     * Explicitly requests Superuser (root) permission from Magisk / KernelSU / APatch via libsu.
+     * Triggers the system superuser prompt dialog if permissions have not yet been granted.
+     */
+    fun requestRootAccess(): Boolean {
+        return try {
+            val shell = Shell.getShell()
+            shell.isRoot
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to obtain superuser shell via libsu", e)
+            false
+        }
+    }
+
+    /**
+     * Checks whether superuser root access is available and granted.
+     */
+    fun isRootAvailable(): Boolean {
+        val granted = Shell.isAppGrantedRoot()
+        if (granted == true) return true
+        return requestRootAccess()
     }
 
     fun execute(command: String, useRoot: Boolean = false, validateInput: Boolean = false): CommandResult {
@@ -23,6 +57,27 @@ object ShellExecutor {
             }
         }
 
+        if (useRoot) {
+            return try {
+                if (Shell.isAppGrantedRoot() != true) {
+                    requestRootAccess()
+                }
+                val shellResult = Shell.cmd(command).exec()
+                CommandResult(
+                    exitCode = shellResult.code,
+                    stdout = shellResult.out.joinToString("\n").trim(),
+                    stderr = shellResult.err.joinToString("\n").trim()
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "libsu execution failed, attempting ProcessBuilder fallback for: $command", e)
+                executeProcessBuilder(command, useRoot = true)
+            }
+        }
+
+        return executeProcessBuilder(command, useRoot = false)
+    }
+
+    private fun executeProcessBuilder(command: String, useRoot: Boolean): CommandResult {
         return try {
             val process = if (useRoot) {
                 ProcessBuilder("su", "-c", command).start()
@@ -42,7 +97,7 @@ object ShellExecutor {
                     while (outReader.readLine().also { line = it } != null) {
                         stdout.append(line).append("\n")
                     }
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
             
             val errThread = Thread {
@@ -51,7 +106,7 @@ object ShellExecutor {
                     while (errReader.readLine().also { line = it } != null) {
                         stderr.append(line).append("\n")
                     }
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
             
             outThread.start()
@@ -77,6 +132,48 @@ object ShellExecutor {
         useRoot: Boolean = false,
         onLine: (String) -> Unit
     ): CommandResult {
+        if (useRoot) {
+            return try {
+                if (Shell.isAppGrantedRoot() != true) {
+                    requestRootAccess()
+                }
+                val stdout = StringBuilder()
+                val stderr = StringBuilder()
+
+                val stdoutCallback = object : CallbackList<String>() {
+                    override fun onAddElement(s: String) {
+                        stdout.append(s).append("\n")
+                        onLine(s)
+                    }
+                }
+
+                val stderrCallback = object : CallbackList<String>() {
+                    override fun onAddElement(s: String) {
+                        stderr.append(s).append("\n")
+                        onLine("[ERR] $s")
+                    }
+                }
+
+                val result = Shell.cmd(command).to(stdoutCallback, stderrCallback).exec()
+                CommandResult(
+                    exitCode = result.code,
+                    stdout = stdout.toString().trim(),
+                    stderr = stderr.toString().trim()
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "libsu streaming failed, using fallback for: $command", e)
+                executeStreamingProcessBuilder(command, useRoot = true, onLine)
+            }
+        }
+
+        return executeStreamingProcessBuilder(command, useRoot = false, onLine)
+    }
+
+    private fun executeStreamingProcessBuilder(
+        command: String,
+        useRoot: Boolean,
+        onLine: (String) -> Unit
+    ): CommandResult {
         return try {
             val process = if (useRoot) {
                 ProcessBuilder("su", "-c", command).start()
@@ -97,7 +194,7 @@ object ShellExecutor {
                         stdout.append(line).append("\n")
                         onLine(line!!)
                     }
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
 
             val errThread = Thread {
@@ -107,7 +204,7 @@ object ShellExecutor {
                         stderr.append(line).append("\n")
                         onLine("[ERR] $line")
                     }
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
 
             outThread.start()

@@ -11,6 +11,9 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
+import ox.fzer0x.snakeloader.spoofer.DeviceSpooferManager
 import ox.fzer0x.snakeloader.CodeShareApiService
 import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.GitHubApiService
@@ -28,6 +31,8 @@ import ox.fzer0x.snakeloader.ui.viewmodels.AdvancedFridaViewModel
 import ox.fzer0x.snakeloader.ui.viewmodels.SettingsViewModel
 import ox.fzer0x.snakeloader.ui.viewmodels.AppDetailsViewModel
 import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppViewModel
+import ox.fzer0x.snakeloader.ui.viewmodels.DexDecompilerViewModel
+import ox.fzer0x.snakeloader.ui.viewmodels.DeviceSpooferViewModel
 
 sealed class Screen(val route: String) {
     object Status : Screen("status")
@@ -43,6 +48,8 @@ sealed class Screen(val route: String) {
     object StalkerToolbox : Screen("stalker_toolbox")
     object MemoryInspector : Screen("memory_inspector")
     object Il2CppInspector : Screen("il2cpp_inspector")
+    object DexDecompiler : Screen("dex_decompiler")
+    object DeviceSpoofer : Screen("device_spoofer")
     object AdvancedFrida : Screen("advanced_frida/{packageName}") {
         fun createRoute(packageName: String) = "advanced_frida/${Uri.encode(packageName)}"
     }
@@ -67,17 +74,16 @@ fun ReShiftNavGraph(
     settingsManager: SettingsManager,
     zygiskManager: ZygiskManager,
     updateManager: UpdateManager,
-    modifier: Modifier = Modifier
-) {
-    val statusViewModel: StatusViewModel = viewModel(
+    statusViewModel: StatusViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return StatusViewModel(fridaManager, scriptManager, settingsManager) as T
             }
         }
-    )
-
+    ),
+    modifier: Modifier = Modifier
+) {
     val appsViewModel: AppsViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -120,11 +126,13 @@ fun ReShiftNavGraph(
         }
     )
 
+    val deviceSpooferManager: DeviceSpooferManager = koinInject()
+
     val advancedFridaViewModel: AdvancedFridaViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val viewModel = AdvancedFridaViewModel(settingsManager)
+                val viewModel = AdvancedFridaViewModel(settingsManager, deviceSpooferManager)
                 viewModel.setSelectedFridaBinary(fridaManager.selectedFridaBinary)
                 return viewModel as T
             }
@@ -135,10 +143,12 @@ fun ReShiftNavGraph(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return Il2CppViewModel(fridaManager, scriptManager) as T
+                return Il2CppViewModel(fridaManager, scriptManager, deviceSpooferManager) as T
             }
         }
     )
+
+    val dexDecompilerViewModel: DexDecompilerViewModel = koinViewModel()
 
     NavHost(
         navController = navController,
@@ -146,17 +156,32 @@ fun ReShiftNavGraph(
         modifier = modifier
     ) {
         composable(Screen.Status.route) {
-            StatusScreen(statusViewModel, scriptManager, fridaManager, onNavigateToToolbox = {
-                navController.navigate(Screen.FridaToolbox.route)
-            }, onNavigateToSettings = {
-                navController.navigate(Screen.Settings.route)
-            }, onNavigateToStalker = {
-                navController.navigate(Screen.StalkerToolbox.route)
-            })
+            StatusScreen(
+                viewModel = statusViewModel,
+                scriptManager = scriptManager,
+                fridaManager = fridaManager,
+                onNavigateToToolbox = {
+                    navController.navigate(Screen.FridaToolbox.route)
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
+                },
+                onNavigateToStalker = {
+                    navController.navigate(Screen.StalkerToolbox.route)
+                },
+                onNavigateToIl2CppInspector = { engine ->
+                    il2cppViewModel.setDumperEngine(engine)
+                    navController.navigate(Screen.Il2CppInspector.route)
+                },
+                onNavigateToDeviceSpoofer = {
+                    navController.navigate(Screen.DeviceSpoofer.route)
+                }
+            )
         }
         composable(Screen.Modules.route) {
             ModulesScreen(
                 scriptManager = scriptManager,
+                fridaManager = fridaManager,
                 onNavigateToAssetBrowser = {
                     navController.navigate(Screen.AssetBrowser.route)
                 },
@@ -175,18 +200,28 @@ fun ReShiftNavGraph(
             )
         }
         composable(Screen.Apps.route) {
-            AppsScreen(appsViewModel, scriptManager, onNavigateToDetails = { packageName ->
-                navController.navigate(Screen.AppDetails.createRoute(packageName))
-            }, onNavigateToToolbox = {
-                navController.navigate(Screen.FridaToolbox.route)
-            }, onNavigateToSettings = {
-                navController.navigate(Screen.Settings.route)
-            })
+            AppsScreen(
+                viewModel = appsViewModel,
+                scriptManager = scriptManager,
+                fridaManager = fridaManager,
+                onNavigateToDetails = { packageName ->
+                    navController.navigate(Screen.AppDetails.createRoute(packageName))
+                },
+                onNavigateToToolbox = {
+                    navController.navigate(Screen.FridaToolbox.route)
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
+                }
+            )
         }
         composable(Screen.Logs.route) {
-            LogsScreen(onNavigateToSettings = {
-                navController.navigate(Screen.Settings.route)
-            })
+            LogsScreen(
+                fridaManager = fridaManager,
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
+                }
+            )
         }
         composable(Screen.Settings.route) {
             SettingsScreen(settingsViewModel, onBack = {
@@ -208,11 +243,18 @@ fun ReShiftNavGraph(
                 onNavigateToAdvancedFrida = { packageName ->
                     navController.navigate(Screen.AdvancedFrida.createRoute(packageName))
                 },
-                onNavigateToIl2CppInspector = {
+                onNavigateToIl2CppInspector = { engine ->
+                    il2cppViewModel.setDumperEngine(engine)
                     navController.navigate(Screen.Il2CppInspector.route)
                 },
                 onNavigateToStalker = {
                     navController.navigate(Screen.StalkerToolbox.route)
+                },
+                onNavigateToDexDecompiler = {
+                    navController.navigate(Screen.DexDecompiler.route)
+                },
+                onNavigateToDeviceSpoofer = {
+                    navController.navigate(Screen.DeviceSpoofer.route)
                 }
             )
         }
@@ -227,7 +269,7 @@ fun ReShiftNavGraph(
             })
         }
         composable(Screen.AssetBrowser.route) {
-            AssetBrowserScreen(scriptManager, onBack = {
+            AssetBrowserScreen(githubApiService, scriptManager, onBack = {
                 navController.popBackStack()
             })
         }
@@ -292,6 +334,24 @@ fun ReShiftNavGraph(
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
+                }
+            )
+        }
+        composable(Screen.DexDecompiler.route) {
+            DexDecompilerScreen(
+                viewModel = dexDecompilerViewModel,
+                fridaManager = fridaManager,
+                onBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        composable(Screen.DeviceSpoofer.route) {
+            val spooferViewModel: DeviceSpooferViewModel = koinViewModel()
+            DeviceSpooferScreen(
+                viewModel = spooferViewModel,
+                onBack = {
+                    navController.popBackStack()
                 }
             )
         }

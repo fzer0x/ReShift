@@ -4,6 +4,72 @@ All notable changes, design system unification, IL2CPP Inspector features, Frida
 
 ---
 
+## [1.2.0] - Universal UE4/UE5 Dumper, KernelSU Next & Performance Overhaul
+
+### 🎮 Universal UE4 / UE5 Dumper Integration (`assets/UE4_DUMP.js`)
+- **Engine Selection (`DumperEngine`)**: Added dual dumper engine support allowing seamless switching between Unity IL2CPP (`il2cpp_inspector_dumper.js`) and Unreal Engine 4/5 (`assets/UE4_DUMP.js`).
+- **In-Memory SDK Extraction**: High-speed traversal of `GUObjectArray`, `GNames` / `FNamePool`, `UClass`, `UScriptStruct`, `UFunction` (with RVA offsets calculation), `UProperty`/`FProperty`, and `UEnum` directly from memory.
+- **Engine Version Compatibility**: Dynamic memory structure adaptation handling Unreal Engine 4.18 up to 5.4+ (including UE 4.25+ `FProperty` shift and `FNamePool` offset structures).
+- **Dual-Stream SQLite Cache**: Streaming batch RPC protocol (`UE4_RPC_STREAM_BATCH`) syncing dumped objects directly into `il2cpp_dumper.db` SQLite repository for rapid search, filtering, and offline inspection.
+- **Frida Toolbox & Inspector UI**: Dedicated "UE4 Dumper" Action Card in Frida Toolbox, dynamic top bar title ("UE4 / UE5 Inspector" vs "IL2CPP Inspector"), Engine badge in metrics banner, and Engine selection chips in Control Center with "NEW" badge.
+
+### 🔍 Pure Kotlin DEX & ELF Inspector Engine (`DexDecompilerEngine.kt`)
+- **Pure Kotlin DEX Parser (`DexParser.kt`)**: Zero-dependency parser for Android Dalvik Executable (`.dex`) files & multi-DEX APKs (`classes.dex`, `classes2.dex`, etc.). Extracts Class Descriptors, Superclasses, Method signatures, Access flags, Fields, String/Type/Proto pools, and Cross-References (XREFs).
+- **Pure Kotlin ELF Parser (`ElfParser.kt`)**: Native Shared Library (`.so`) parser supporting both 32-bit (ELF32) and 64-bit (ELF64) binaries. Extracts ELF headers, Section headers (`.text`, `.rodata`, `.dynsym`, `.symtab`), dynamic symbols, export/import function offsets, and PLT/GOT tables.
+- **Disassembly & Scripting Automation (`Arm64Disassembler.kt` & `HexDumpEngine.kt`)**: Integrated ARM64 opcode disassembly, Hex Dump viewer, and automated generator for Pseudo-C code, radare2 (`r2frida`) CLI commands (`pdf`, `axt`, `axf`, `px`), and Ghidra scripts.
+- **Interactive Inspection UI (`MemoryInspectorScreen.kt`)**: Interactive nested package tree hierarchy (`DexPackageTree`), instant search/filter toolbar across DEX classes and ELF symbols, offset hex dumper, and live package decompiler interface.
+
+### 🛡️ Xposed Hardware Spoofer Engine (`DeviceSpooferManager.kt` & `FingerprintSpooferHook.kt`)
+- **Multi-Layer Fingerprint Hooking (`FingerprintSpooferHook.kt`)**: Low-level Xposed/LSPosed hooks intercepting `android.os.Build` constants (`BOARD`, `BOOTLOADER`, `BRAND`, `DEVICE`, `DISPLAY`, `FINGERPRINT`, `HARDWARE`, `MANUFACTURER`, `MODEL`, `PRODUCT`, `SERIAL`, etc.), `SystemProperties.get()`, `Settings.Secure.android_id`, and `WifiInfo`/`TelephonyManager` identifiers.
+- **Native JNI & Shell Command Hooking (`spoofer-native.cpp` & `SpoofedProcess`)**: C/C++ native library (`reshift_spoofer_native`) intercepting `__system_property_get` / `__system_property_read` in NDK native runtime. Hooks `Runtime.exec()` and `ProcessBuilder` via dummy `SpoofedProcess` streams to return spoofed outputs for `getprop` shell executions and `/proc/cpuinfo` / `/proc/version` file reads.
+- **Profile Management & GUI Control (`DeviceSpooferScreen.kt`)**: Full GUI dashboard with pre-configured device presets (Pixel 8 Pro, Galaxy S24 Ultra, ROG Phone 8, Xiaomi 14 Pro, Custom/Randomized), per-package targeting, persistent JSON configuration (`spoofer_config.json`), and live LSPosed / KernelSU profile synchronization.
+
+### 🚀 Frida Launch & Timeout Fixes
+- **Parallel Co-Launcher Helper**: Fires a parallel launcher intent (`monkey`) 600ms after Frida `-f` spawn starts to wake up Android ActivityManager and eliminate spawn timeouts.
+- **Auto-Attach Fallback**: Detects spawn timeouts in stderr, verifies target process PID, and automatically connects via `attachToRunningProcess`.
+
+### 🛑 Inspector Control & Reset
+- **Dynamic Stop Button**: "Launch & Inspect" transforms into a prominent red "Stop Inspection" button when dumping is active.
+- **Clear All Button**: Added one-tap reset button to stop inspection, clear SQLite database cache for the target package, and reset search filters and status messages.
+
+### 🎨 Layout & UI Bugfixes
+- **2-Row Action Controls**: Redesigned Action Controls to prevent button squeezing and horizontal text wrapping:
+  - Row 1 (Full Width): Primary button (`Launch & Inspect` / `Stop Inspection`).
+  - Row 2 (50%/50% Split): Secondary buttons (`Cached Dump` & `Clear All`).
+
+### 📱 Root Module Status & Badges (Home Screen & Settings)
+- **KernelSU Next Detection**: Added specific detection and display labels for KernelSU Next (`KernelSU Next Module`), Magisk, KernelSU, and APatch.
+- **Status Badges**: Added `(latest)` badge for up-to-date modules and `(need update)` badge for pending updates, rendered directly under the version number in the System Environment card.
+
+### ⚡ Performance Optimization (100x Faster Settings)
+- **Batched Root Shell Commands**: Consolidated status and module queries into single-line batched root shell executions.
+- **Cached Root Detection**: Cached `getRootType()` and optimized detection into a single-line shell check.
+- **Asynchronous IO**: Moved all system & module status loading to `Dispatchers.IO`, making the Settings screen open instantly with zero UI freezes or ANRs.
+
+### ❌ App Force-Close ("Close") in 3-Dots Menus
+- **Root Force Close**: Added "Close" option in 3-dots top bar dropdown menus across all main screens (Home, Apps, Inspector, Modules, Logs) for immediate root force-stop (`am force-stop`, `pkill -9`, `kill -9`) of active target applications.
+
+### 💫 System Boot Sequence (Splash Animation)
+- **Interactive Cold-Start Boot Animation (`ReShiftBootAnimation.kt`)**: Displays a high-tech cyberpunk splash animation with glowing rotating orbit rings, pulsing ReShift brand logo badge, and animated progress bar on cold start.
+- **Live Boot Checks**: Sequentially checks Root Access, Repositories, Root Module installation status, and Frida Core Engine, smoothly fading into the main dashboard upon completion.
+
+### 🔧 Code Refactoring & Memory Leak Fixes
+- **C++ Native Memory & KV Cache Lifecycle (`OnDeviceLlmEngine.kt` & `llama-bridge.cpp`)**:
+  - Implemented `AutoCloseable` interface and JVM `finalize()` fallback guard on `OnDeviceLlmEngine` to guarantee `nativeFreeModel()` execution and prevent native RAM leaks upon ViewModel teardown or garbage collection.
+  - Added explicit `llama_kv_cache_clear()` calls prior to token generation in `llama-bridge.cpp` to prevent KV cache context pollution across consecutive inference queries.
+- **Coroutines & Non-Blocking I/O (`FridaManager.kt`)**:
+  - Replaced all synchronous blocking `Thread.sleep()` calls (1000ms, 2000ms, 600ms, 1500ms) across process spawn and attach routines with non-blocking coroutine `delay()` calls.
+  - Converted background watcher threads to structured coroutine scopes (`scope.launch(Dispatchers.IO)`).
+- **Dead Code & Unused Parameter Cleanup**:
+  - Processed `candidateScript` in `Il2CppAiAssistant.getSeniorTemplateScript()` to embed user/candidate base scripts directly into template headers.
+  - Wired `scripts`, `pkg`, and `mode` parameters in `FridaManager.executeMultipleScripts()` to delegate directly to `MultiScriptLoader`.
+  - Exposed `getClassWithAncestors()` in `Il2CppRepository` and `Il2CppViewModel` (`getClassHierarchy()`) for class inheritance inspection.
+- **SQLite JSON Parsing & Query Optimization (`Il2CppDatabaseHelper.kt`)**:
+  - Implemented `parseJsonList()` helper with fast checks for `null`, empty, and `"[]"` strings to bypass expensive Gson reflection calls on empty method/field arrays.
+  - Consolidated duplicate cursor row mapping into `extractClassFromCursor()`, removing 100+ lines of redundant database code and accelerating SQLite metadata queries.
+
+---
+
 ## [1.1.1] - Maintenance & Engine Upgrades
 
 ### 📦 Frida Engine & Binaries Upgrade

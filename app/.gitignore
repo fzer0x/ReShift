@@ -2,3 +2,9 @@
 *.jks
 *.keystore
 keystore.properties
+google-services.json
+secrets.properties
+*.env
+*.pem
+*.key
+

@@ -17,15 +17,62 @@ class ModuleManager(private val context: Context, private val settings: Settings
         private const val MODULE_ASSET_NAME = "ReShift.zip"
     }
 
-    enum class RootType {
-        MAGISK, KERNEL_SU, APATCH, UNKNOWN
+    enum class RootType(val displayName: String) {
+        MAGISK("Magisk Module"),
+        KERNEL_SU("KernelSU Module"),
+        KERNEL_SU_NEXT("KernelSU Next Module"),
+        APATCH("APatch Module"),
+        UNKNOWN("Root Module")
     }
 
-    fun getRootType(): RootType {
-        if (ShellExecutor.execute("command -v magisk", useRoot = true).isSuccess) return RootType.MAGISK
-        if (ShellExecutor.execute("command -v ksu", useRoot = true).isSuccess) return RootType.KERNEL_SU
-        if (ShellExecutor.execute("command -v apatch", useRoot = true).isSuccess) return RootType.APATCH
-        return RootType.UNKNOWN
+    private var cachedRootType: RootType? = null
+
+    fun getRootType(forceCheck: Boolean = false): RootType {
+        if (!forceCheck && cachedRootType != null) return cachedRootType!!
+        val checkCmd = "if command -v ksun >/dev/null 2>&1; then echo KSU_NEXT; elif command -v ksu >/dev/null 2>&1 || command -v ksud >/dev/null 2>&1; then if (ksu --version || ksud --version) 2>/dev/null | grep -qi 'next'; then echo KSU_NEXT; else echo KSU; fi; elif command -v magisk >/dev/null 2>&1; then echo MAGISK; elif command -v apatch >/dev/null 2>&1; then echo APATCH; else echo UNKNOWN; fi"
+        val res = ShellExecutor.execute(checkCmd, useRoot = true).stdout.trim()
+        val type = when (res) {
+            "KSU_NEXT" -> RootType.KERNEL_SU_NEXT
+            "KSU" -> RootType.KERNEL_SU
+            "MAGISK" -> RootType.MAGISK
+            "APATCH" -> RootType.APATCH
+            else -> RootType.UNKNOWN
+        }
+        cachedRootType = type
+        return type
+    }
+
+    data class ModuleInfo(
+        val isInstalled: Boolean,
+        val version: String,
+        val versionCode: Int,
+        val isServiceRunning: Boolean
+    )
+
+    fun getModuleInfo(): ModuleInfo {
+        val batchCmd = "if [ -d $MODULE_PATH ]; then echo 'INSTALLED=yes'; grep -E '^(version|versionCode)=' $MODULE_PATH/module.prop 2>/dev/null; fi; if pgrep -f 'frida-server|nm-service' >/dev/null 2>&1; then echo 'RUNNING=yes'; fi"
+        val res = ShellExecutor.execute(batchCmd, useRoot = true).stdout
+        
+        val isInstalled = res.contains("INSTALLED=yes")
+        var ver = "0"
+        var vCode = 0
+        val isRunning = res.contains("RUNNING=yes")
+
+        res.lines().forEach { line ->
+            val trimmed = line.trim()
+            if (trimmed.startsWith("version=")) {
+                ver = trimmed.substringAfter("version=").trim().ifEmpty { "0" }
+            } else if (trimmed.startsWith("versionCode=")) {
+                vCode = trimmed.substringAfter("versionCode=").trim().toIntOrNull() ?: 0
+            }
+        }
+
+        return ModuleInfo(
+            isInstalled = isInstalled,
+            version = if (isInstalled) ver else "Not Installed",
+            versionCode = vCode,
+            isServiceRunning = isRunning
+        )
     }
 
     fun isModuleInstalled(): Boolean {
@@ -103,7 +150,7 @@ class ModuleManager(private val context: Context, private val settings: Settings
             
             val installCmd = when (rootType) {
                 RootType.MAGISK -> "magisk --install-module $remoteZip"
-                RootType.KERNEL_SU -> "ksu module install $remoteZip"
+                RootType.KERNEL_SU, RootType.KERNEL_SU_NEXT -> "ksu module install $remoteZip"
                 RootType.APATCH -> "apatch module install $remoteZip"
                 else -> {
                     onLog("Warning: Unknown root type, falling back to magisk")
@@ -147,6 +194,9 @@ class ModuleManager(private val context: Context, private val settings: Settings
     fun restartService(): Boolean {
         ShellExecutor.execute("pkill -9 -f 'frida-server|nm-service'", useRoot = true)
         
+        val syncCmd = "for b in frida-server frida-inject frida; do if [ -f $MODULE_PATH/\$b ]; then cp -f $MODULE_PATH/\$b /data/local/tmp/\$b && chmod 755 /data/local/tmp/\$b; fi; done"
+        ShellExecutor.execute(syncCmd, useRoot = true)
+
         val result = ShellExecutor.execute("nohup sh $MODULE_PATH/service.sh > /dev/null 2>&1 &", useRoot = true)
         return result.isSuccess
     }

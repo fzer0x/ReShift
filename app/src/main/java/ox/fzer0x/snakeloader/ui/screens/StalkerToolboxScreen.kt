@@ -40,7 +40,7 @@ fun StalkerToolboxScreen(
     var isRunning by stalkerManager.isActive
     var moduleFilter by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    
+
     val rpcManager = fridaManager.getRpcManager()
     var isRpcConnected by remember { mutableStateOf(rpcManager != null) }
     var isConnectingRpc by remember { mutableStateOf(false) }
@@ -76,7 +76,7 @@ fun StalkerToolboxScreen(
                                 Spacer(Modifier.width(12.dp))
                                 Text("CONFIGURATION", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.2.sp)
                             }
-                            
+
                             Surface(
                                 color = if (isRpcConnected) SuccessGreen.copy(alpha = 0.12f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.12f),
                                 shape = ReShiftChipShape
@@ -96,7 +96,7 @@ fun StalkerToolboxScreen(
                                 }
                             }
                         }
-                        
+
                         if (!isRpcConnected) {
                             Spacer(Modifier.height(16.dp))
                             Button(
@@ -125,13 +125,13 @@ fun StalkerToolboxScreen(
                                 }
                             }
                         }
-                        
+
                         connectionError?.let {
                             Text(it, color = MaterialTheme.colorScheme.error, fontSize = 11.sp, modifier = Modifier.padding(top = 8.dp))
                         }
 
                         Spacer(Modifier.height(16.dp))
-                        
+
                         OutlinedTextField(
                             value = moduleFilter,
                             onValueChange = { moduleFilter = it },
@@ -141,7 +141,7 @@ fun StalkerToolboxScreen(
                             shape = ReShiftButtonShape,
                             singleLine = true
                         )
-                        
+
                         val currentPackageState = fridaManager.currentPackageName.collectAsState()
                         val currentPackage = currentPackageState.value
                         if (!currentPackage.isNullOrEmpty()) {
@@ -168,7 +168,7 @@ fun StalkerToolboxScreen(
                             Text("Real-time Trace", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                             Text("Instrument code flow dynamically", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        
+
                         Button(
                             onClick = {
                                 connectionError = null
@@ -196,7 +196,7 @@ fun StalkerToolboxScreen(
                     OutlinedInfoItem(Icons.Default.Memory, "Resolves symbols using the native DebugSymbol API on-the-fly.")
                 }
             }
-            
+
             item {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),

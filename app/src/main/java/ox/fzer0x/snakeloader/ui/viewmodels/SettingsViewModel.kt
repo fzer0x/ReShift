@@ -49,13 +49,22 @@ class SettingsViewModel(
     var installSuccess by mutableStateOf(false)
         private set
 
+    var moduleLabel by mutableStateOf("Root Module")
+        private set
+
     fun refreshModuleStatus(context: Context) {
         launchWithLoading {
-            val mm = getModuleManager(context)
-            isModuleInstalled = mm.isModuleInstalled()
-            if (isModuleInstalled) {
-                moduleVersion = mm.getModuleVersion()
-                isModuleServiceRunning = mm.isServiceRunning()
+            val (info, rootType, assetVCode) = withContext(Dispatchers.IO) {
+                val mm = getModuleManager(context)
+                Triple(mm.getModuleInfo(), mm.getRootType(), mm.getAssetModuleVersionCode())
+            }
+
+            isModuleInstalled = info.isInstalled
+            moduleLabel = rootType.displayName
+            if (info.isInstalled) {
+                val tag = if (info.versionCode >= assetVCode) "(latest)" else "(need update)"
+                moduleVersion = "${info.version} $tag"
+                isModuleServiceRunning = info.isServiceRunning
             } else {
                 moduleVersion = "Not Installed"
                 isModuleServiceRunning = false

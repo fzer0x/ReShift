@@ -224,7 +224,7 @@ private fun ScannerTab(
     val scanResults = viewModel.scanResults.value
     val isLoading = viewModel.isLoading.value
     val memoryDump = viewModel.memoryDump.value
-    
+
     var searchPattern by remember { mutableStateOf("") }
     var selectedModule by remember { mutableStateOf("") }
 
@@ -258,7 +258,7 @@ private fun ScannerTab(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Dump", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
-            
+
             OutlinedButton(
                 onClick = { },
                 modifier = Modifier.weight(1f),
@@ -360,7 +360,7 @@ private fun RegistryTab(registryInfo: Map<String, Any>?) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item { SectionHeader("ENGINE REGISTRY") }
-            
+
             registryInfo.forEach { (key, value) ->
                 when (value) {
                     is Map<*, *> -> {
@@ -402,7 +402,7 @@ private fun RegistryTab(registryInfo: Map<String, Any>?) {
                     }
                 }
             }
-            
+
             item { Spacer(Modifier.height(32.dp)) }
         }
     }
@@ -414,7 +414,7 @@ private fun RegistryItem(key: String, value: String, isNested: Boolean = false) 
         color = if (isNested) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surface,
         shape = ReShiftChipShape,
         border = BorderStroke(
-            1.dp, 
+            1.dp,
             if (isNested) MaterialTheme.colorScheme.outline.copy(alpha = 0.1f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
         ),
         modifier = if (isNested) Modifier.padding(start = 12.dp) else Modifier

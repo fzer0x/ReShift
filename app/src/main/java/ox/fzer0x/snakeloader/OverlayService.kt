@@ -526,6 +526,24 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
                                     lineHeight = 16.sp
                                 )
 
+                                val currentScript = activeEngine?.validatedScript?.collectAsState()?.value ?: ""
+                                val hasRpcExports = currentScript.contains("rpc.exports") || currentScript.contains("EXPORTS")
+                                if (hasRpcExports) {
+                                    Surface(
+                                        color = Color(0xFF1F6FEB).copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(Icons.Default.FlashOn, null, tint = Color(0xFF58A6FF), modifier = Modifier.size(12.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("⚡ Dynamic RPC Controls Active", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF58A6FF))
+                                        }
+                                    }
+                                }
+
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)

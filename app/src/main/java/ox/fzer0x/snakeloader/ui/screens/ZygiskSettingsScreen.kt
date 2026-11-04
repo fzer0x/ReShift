@@ -52,11 +52,11 @@ fun ZygiskSettingsScreen(
     val scriptManager: ScriptManager = koinInject()
     val context = LocalContext.current
     val config = zygiskManager.getConfig()
-    
+
     var zygiskEnabled by remember { mutableStateOf(moduleManager.isZygiskEnabled()) }
     var showAppPicker by remember { mutableStateOf(false) }
     var selectedPackageForScript by remember { mutableStateOf<String?>(null) }
-    
+
     val apps = remember { mutableStateListOf<ZygiskAppEntry>().apply { addAll(config.apps) } }
     val scripts = remember { scriptManager.getScripts() }
 
@@ -139,12 +139,12 @@ fun ZygiskSettingsScreen(
                                 }
                             )
                         }
-                        
+
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 12.dp),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
                         )
-                        
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Outlined.Info,
@@ -213,7 +213,7 @@ fun ZygiskSettingsScreen(
                     )
                 }
             }
-            
+
             item { Spacer(Modifier.height(80.dp)) }
         }
     }
@@ -272,7 +272,7 @@ fun ZygiskSettingsScreen(
                                     .padding(vertical = 4.dp),
                                 shape = ReShiftChipShape,
                                 border = BorderStroke(
-                                    1.dp, 
+                                    1.dp,
                                     if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                                     else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
                                 ),
@@ -293,7 +293,7 @@ fun ZygiskSettingsScreen(
                                     }
                                     Checkbox(
                                         checked = isSelected,
-                                        onCheckedChange = null 
+                                        onCheckedChange = null
                                     )
                                 }
                             }
@@ -339,9 +339,9 @@ fun AppPickerDialog(
 
     val filteredApps = remember(searchQuery, installedApps) {
         if (searchQuery.isEmpty()) installedApps
-        else installedApps.filter { 
-            it.label.contains(searchQuery, ignoreCase = true) || 
-            it.packageName.contains(searchQuery, ignoreCase = true) 
+        else installedApps.filter {
+            it.label.contains(searchQuery, ignoreCase = true) ||
+            it.packageName.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -409,7 +409,7 @@ fun AppPickerDialog(
 
 @Composable
 fun AppPickerItem(app: AppInfo, onClick: () -> Unit) {
-    val iconBitmap = remember(app.packageName) { 
+    val iconBitmap = remember(app.packageName) {
         try {
             app.icon?.toBitmap()?.asImageBitmap()
         } catch (e: Exception) {
@@ -449,14 +449,14 @@ fun AppPickerItem(app: AppInfo, onClick: () -> Unit) {
             Spacer(Modifier.width(16.dp))
             Column {
                 Text(
-                    app.label, 
+                    app.label,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    app.packageName, 
+                    app.packageName,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -470,13 +470,13 @@ fun AppPickerItem(app: AppInfo, onClick: () -> Unit) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ZygiskAppItem(
-    entry: ZygiskAppEntry, 
+    entry: ZygiskAppEntry,
     appInfo: AppInfo?,
     assignedScripts: List<DownloadedScript>,
     onDelete: () -> Unit,
     onSelectScript: () -> Unit
 ) {
-    val iconBitmap = remember(appInfo) { 
+    val iconBitmap = remember(appInfo) {
         try {
             appInfo?.icon?.toBitmap()?.asImageBitmap()
         } catch (_: Exception) {
@@ -508,9 +508,9 @@ fun ZygiskAppItem(
                     Icon(Icons.Default.Android, null, tint = Color(0xFF3DDC84))
                 }
             }
-            
+
             Spacer(Modifier.width(16.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = appInfo?.label ?: entry.packageName,
@@ -528,9 +528,9 @@ fun ZygiskAppItem(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                
+
                 Spacer(Modifier.height(4.dp))
-                
+
                 if (assignedScripts.isEmpty()) {
                     Text(
                         text = "No scripts",
@@ -560,18 +560,18 @@ fun ZygiskAppItem(
                     }
                 }
             }
-            
+
             IconButton(onClick = onSelectScript) {
                 Icon(
-                    Icons.Default.Javascript, 
+                    Icons.Default.Javascript,
                     contentDescription = "Assign Scripts",
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
-            
+
             IconButton(onClick = onDelete) {
                 Icon(
-                    Icons.Default.Delete, 
+                    Icons.Default.Delete,
                     contentDescription = "Delete",
                     tint = MaterialTheme.colorScheme.error
                 )

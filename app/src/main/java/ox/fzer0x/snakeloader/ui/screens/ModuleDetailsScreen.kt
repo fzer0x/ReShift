@@ -96,7 +96,7 @@ fun ModuleDetailsScreen(
                             Spacer(Modifier.width(12.dp))
                             Text("MODULE INFO", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, letterSpacing = 1.2.sp)
                         }
-                        
+
                         if (script.description != null) {
                             Spacer(Modifier.height(12.dp))
                             Text(script.description, style = MaterialTheme.typography.bodyMedium)
@@ -117,7 +117,7 @@ fun ModuleDetailsScreen(
                     }
                 }
             }
-            
+
             if (script.metadata.targetPackages.isNotEmpty()) {
                 item {
                     SectionHeader("RECOMMENDED FOR")
@@ -135,11 +135,11 @@ fun ModuleDetailsScreen(
                     }
                 }
             }
-            
+
             item {
                 Spacer(Modifier.height(8.dp))
                 SectionHeader("SCOPE APPLICATIONS")
-                
+
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -157,11 +157,11 @@ fun ModuleDetailsScreen(
                     shape = ReShiftButtonShape
                 )
             }
-            
+
             items(filteredApps, key = { it.packageName }) { app ->
                 val isAssigned = app.packageName in assignedApps
                 val isTargeted = app.packageName in script.metadata.targetPackages
-                
+
                 ReShiftCard(
                     border = if (isAssigned) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else CardDefaults.outlinedCardBorder()
                 ) {
@@ -169,10 +169,10 @@ fun ModuleDetailsScreen(
                         modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val iconBitmap = remember(app.packageName) { 
+                        val iconBitmap = remember(app.packageName) {
                             try { app.icon?.toBitmap()?.asImageBitmap() } catch (_: Exception) { null }
                         }
-                        
+
                         if (iconBitmap != null) {
                             Image(
                                 bitmap = iconBitmap,
@@ -187,7 +187,7 @@ fun ModuleDetailsScreen(
                         }
 
                         Spacer(Modifier.width(12.dp))
-                        
+
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(app.label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -200,7 +200,7 @@ fun ModuleDetailsScreen(
                             }
                             Text(app.packageName, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-                        
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (isAssigned) {
                                 IconButton(
@@ -221,7 +221,7 @@ fun ModuleDetailsScreen(
                                     Icon(Icons.Default.PlayArrow, contentDescription = "Launch", tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
-                            
+
                             Switch(
                                 checked = isAssigned,
                                 onCheckedChange = { checked ->
@@ -238,7 +238,7 @@ fun ModuleDetailsScreen(
                     }
                 }
             }
-            
+
             item { Spacer(Modifier.height(40.dp)) }
         }
     }

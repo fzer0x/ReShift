@@ -171,7 +171,7 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putBoolean("use_runtime_v8", value).apply()
 
     var useNoPause: Boolean
-        get() = prefs.getBoolean("use_no_pause", false)
+        get() = prefs.getBoolean("use_no_pause", true)
         set(value) = prefs.edit().putBoolean("use_no_pause", value).apply()
 
     var useDebugLog: Boolean
@@ -218,8 +218,28 @@ class SettingsManager(context: Context) {
             prefs.edit().putString("gemini_api_key_encrypted", encrypted).remove("gemini_api_key").apply()
         }
 
+    companion object {
+        const val DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+        val SUPPORTED_GEMINI_MODELS = listOf(
+            "gemini-3.8-flash" to "Gemini 3.8 Flash",
+            "gemini-3.6-flash" to "Gemini 3.6 Flash",
+            "gemini-3.5-flash-lite" to "3.5 Flash Lite"
+        )
+    }
+
     var geminiModel: String
-        get() = prefs.getString("gemini_model", "gemini-3.6-flash") ?: "gemini-3.6-flash"
+        get() {
+            val raw = prefs.getString("gemini_model", DEFAULT_GEMINI_MODEL) ?: DEFAULT_GEMINI_MODEL
+            val migrated = when {
+                raw.startsWith("gemini-1.") || raw.startsWith("gemini-2.") -> DEFAULT_GEMINI_MODEL
+                SUPPORTED_GEMINI_MODELS.none { it.first == raw } -> DEFAULT_GEMINI_MODEL
+                else -> raw
+            }
+            if (migrated != raw) {
+                prefs.edit().putString("gemini_model", migrated).apply()
+            }
+            return migrated
+        }
         set(value) = prefs.edit().putString("gemini_model", value).apply()
 
     var aiAutoCorrectionEnabled: Boolean

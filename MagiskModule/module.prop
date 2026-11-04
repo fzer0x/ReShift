@@ -1,7 +1,7 @@
 id=snakeloader_frida
 name=ReShift
-version=1.1.0
-versionCode=110
+version=1.2.0
+versionCode=120
 author=fzer0x
-description=Universal Frida 17.18.0 & Zygisk Integration for ReShift. Supporting Magisk, KernelSU, KSU Next, APatch, and Stealth.
+description=Universal Frida & Zygisk Integration for ReShift. On-Demand Runtime Binary Management via ReShift App.
 zygisk=true

@@ -10,12 +10,15 @@
 
 ## 🚀 Key Features & Capabilities
 
-### 🎮 IL2CPP Unity Inspector & Dumper
-Deep reverse engineering suite for Unity Android games utilizing the IL2CPP scripting backend:
-- **Native Metadata Extraction**: Direct extraction of metadata from `libil2cpp.so` and `global-metadata.dat`.
-- **SQLite Database Engine (`il2cpp_dumper.db`)**: Persistent local SQLite caching of all parsed C# metadata for instant offline reloads and rapid search.
-- **Dashboard Overview Metrics Banner**: Real-time display of total parsed C# classes, active target application, and database engine status.
-- **Unified Control Center**: Target app selection, icon previews, and a configurable Frida injection delay slider (0 to 30 seconds) with quick preset chips (`0s`, `3s`, `5s`, `7s`, `10s`, `15s`, `20s`).
+### 🎮 Universal UE4 / UE5 Dumper & Unity IL2CPP Inspector
+Deep reverse engineering and in-memory metadata dumping for Unity IL2CPP and Unreal Engine 4/5 mobile games:
+- **Dual Dumper Engine (`DumperEngine`)**: Switch seamlessly between Unity IL2CPP (`il2cpp_inspector_dumper.js`) and Unreal Engine 4/5 (`assets/UE4_DUMP.js`).
+- **In-Memory Unreal Engine SDK Extraction**: Traversals of `GUObjectArray`, `GNames` / `FNamePool`, `UClass`, `UScriptStruct`, `UFunction` (with RVA offsets calculation), `UProperty`/`FProperty`, and `UEnum`.
+- **Engine Version Compatibility**: Dynamic memory structure adaptation handling Unreal Engine 4.18 up to 5.4+ (including UE 4.25+ `FProperty` shift and `FNamePool` offset structures).
+- **Native IL2CPP Metadata Extraction**: Direct extraction of metadata from `libil2cpp.so` and `global-metadata.dat`.
+- **SQLite Database Engine (`il2cpp_dumper.db`)**: Persistent local SQLite caching of all dumped metadata for instant offline reloads, high-speed search, and RPC batch streaming (`UE4_RPC_STREAM_BATCH`).
+- **Dashboard Overview Metrics Banner**: Real-time display of total parsed classes, active target application, and database engine status.
+- **Unified Control Center**: Target app selection, icon previews, engine selection chips with "NEW" badges, and configurable Frida injection delay slider (0 to 30 seconds).
 - **Search & Filtering Toolbar**: Real-time filtering across class names, namespaces, methods, fields, and RVA offsets.
   - Filter by type: `All`, `Classes`, `Structs`, `Interfaces`, `Enums`.
   - **Prune DB**: One-click database cleaning to strip compiler-generated internal noise and anonymized classes.
@@ -26,6 +29,23 @@ Deep reverse engineering suite for Unity Android games utilizing the IL2CPP scri
   - **Properties Tab**: Declared C# properties with `{ get; set; }` badges.
   - **C# Code View**: Renders auto-generated C# pseudocode stubs in a high-tech dual-scrolling code preview with line numbers and one-click copy.
 - **Full Dump Export**: Export complete metadata dumps to structured JSON or C# Header (`.cs`) files.
+
+---
+
+### 🔍 Pure Kotlin DEX & ELF Inspector Engine
+Integrated static binary decompiler, native shared library symbol analyzer, and disassembly engine:
+- **Pure Kotlin DEX Parser (`DexParser.kt`)**: Zero-dependency parser for Android Dalvik Executable (`.dex`) files & multi-DEX APKs (`classes.dex`, `classes2.dex`, etc.). Extracts Class Descriptors, Superclasses, Method signatures, Access flags, Fields, String/Type/Proto pools, and Cross-References (XREFs).
+- **Pure Kotlin ELF Parser (`ElfParser.kt`)**: Native Shared Library (`.so`) parser supporting both 32-bit (ELF32) and 64-bit (ELF64) binaries. Extracts ELF headers, Section headers (`.text`, `.rodata`, `.dynsym`, `.symtab`), dynamic symbols, export/import function offsets, and PLT/GOT tables.
+- **Disassembly & Scripting Automation (`Arm64Disassembler.kt` & `HexDumpEngine.kt`)**: Integrated ARM64 opcode disassembly, Hex Dump viewer, and automated generator for Pseudo-C code, radare2 (`r2frida`) CLI commands (`pdf`, `axt`, `axf`, `px`), and Ghidra scripts.
+- **Interactive Inspection UI (`MemoryInspectorScreen.kt`)**: Interactive nested package tree hierarchy (`DexPackageTree`), instant search/filter toolbar across DEX classes and ELF symbols, offset hex dumper, and live package decompiler interface.
+
+---
+
+### 🛡️ Xposed Hardware & Fingerprint Spoofer
+System-wide and per-application hardware identity mask engine utilizing Xposed/LSPosed and native NDK hooks:
+- **Multi-Layer Fingerprint Hooking (`FingerprintSpooferHook.kt`)**: Low-level Xposed hooks intercepting `android.os.Build` constants (`BOARD`, `BOOTLOADER`, `BRAND`, `DEVICE`, `DISPLAY`, `FINGERPRINT`, `HARDWARE`, `MANUFACTURER`, `MODEL`, `PRODUCT`, `SERIAL`, etc.), `SystemProperties.get()`, `Settings.Secure.android_id`, and `WifiInfo`/`TelephonyManager` identifiers.
+- **Native JNI & Shell Command Hooking (`spoofer-native.cpp` & `SpoofedProcess`)**: C/C++ native library (`reshift_spoofer_native`) intercepting `__system_property_get` / `__system_property_read` in NDK native runtime. Hooks `Runtime.exec()` and `ProcessBuilder` via dummy `SpoofedProcess` streams to return spoofed outputs for `getprop` shell executions and `/proc/cpuinfo` / `/proc/version` file reads.
+- **Profile Management & GUI Control (`DeviceSpooferScreen.kt`)**: Full GUI dashboard with pre-configured device presets (Pixel 8 Pro, Galaxy S24 Ultra, ROG Phone 8, Xiaomi 14 Pro, Custom/Randomized), per-package targeting, persistent JSON configuration (`spoofer_config.json`), and live LSPosed / KernelSU profile synchronization.
 
 ---
 
@@ -106,6 +126,28 @@ ReShift/
 ---
 
 ## 📜 Changelog
+
+### [1.2.0] - Universal UE4/UE5 Dumper, KernelSU Next & Performance Overhaul
+
+#### 🎮 Universal UE4 / UE5 Dumper Integration (`assets/UE4_DUMP.js`)
+- **Engine Selection (`DumperEngine`)**: Dual dumper engine support allowing seamless switching between Unity IL2CPP (`il2cpp_inspector_dumper.js`) and Unreal Engine 4/5 (`assets/UE4_DUMP.js`).
+- **In-Memory SDK Extraction**: High-speed traversal of `GUObjectArray`, `GNames` / `FNamePool`, `UClass`, `UScriptStruct`, `UFunction` (with RVA offsets calculation), `UProperty`/`FProperty`, and `UEnum` directly from memory.
+- **Engine Version Compatibility**: Dynamic memory structure adaptation handling Unreal Engine 4.18 up to 5.4+ (including UE 4.25+ `FProperty` shift and `FNamePool` offset structures).
+- **Dual-Stream SQLite Cache**: Streaming batch RPC protocol (`UE4_RPC_STREAM_BATCH`) syncing dumped objects directly into `il2cpp_dumper.db` SQLite repository for rapid search, filtering, and offline inspection.
+- **Frida Toolbox & Inspector UI**: Dedicated "UE4 Dumper" Action Card in Frida Toolbox, dynamic top bar title ("UE4 / UE5 Inspector" vs "IL2CPP Inspector"), Engine badge in metrics banner, and Engine selection chips in Control Center with "NEW" badge.
+
+#### 🔍 Pure Kotlin DEX & ELF Inspector Engine (`DexDecompilerEngine.kt`)
+- **Pure Kotlin DEX Parser (`DexParser.kt`)**: Zero-dependency parser for Android Dalvik Executable (`.dex`) files & multi-DEX APKs (`classes.dex`, `classes2.dex`, etc.). Extracts Class Descriptors, Superclasses, Method signatures, Access flags, Fields, String/Type/Proto pools, and Cross-References (XREFs).
+- **Pure Kotlin ELF Parser (`ElfParser.kt`)**: Native Shared Library (`.so`) parser supporting both 32-bit (ELF32) and 64-bit (ELF64) binaries. Extracts ELF headers, Section headers (`.text`, `.rodata`, `.dynsym`, `.symtab`), dynamic symbols, export/import function offsets, and PLT/GOT tables.
+- **Disassembly & Scripting Automation (`Arm64Disassembler.kt` & `HexDumpEngine.kt`)**: Integrated ARM64 opcode disassembly, Hex Dump viewer, and automated generator for Pseudo-C code, radare2 (`r2frida`) CLI commands (`pdf`, `axt`, `axf`, `px`), and Ghidra scripts.
+- **Interactive Inspection UI (`MemoryInspectorScreen.kt`)**: Interactive nested package tree hierarchy (`DexPackageTree`), instant search/filter toolbar across DEX classes and ELF symbols, offset hex dumper, and live package decompiler interface.
+
+#### 🛡️ Xposed Hardware Spoofer Engine (`DeviceSpooferManager.kt` & `FingerprintSpooferHook.kt`)
+- **Multi-Layer Fingerprint Hooking (`FingerprintSpooferHook.kt`)**: Low-level Xposed/LSPosed hooks intercepting `android.os.Build` constants (`BOARD`, `BOOTLOADER`, `BRAND`, `DEVICE`, `DISPLAY`, `FINGERPRINT`, `HARDWARE`, `MANUFACTURER`, `MODEL`, `PRODUCT`, `SERIAL`, etc.), `SystemProperties.get()`, `Settings.Secure.android_id`, and `WifiInfo`/`TelephonyManager` identifiers.
+- **Native JNI & Shell Command Hooking (`spoofer-native.cpp` & `SpoofedProcess`)**: C/C++ native library (`reshift_spoofer_native`) intercepting `__system_property_get` / `__system_property_read` in NDK native runtime. Hooks `Runtime.exec()` and `ProcessBuilder` via dummy `SpoofedProcess` streams to return spoofed outputs for `getprop` shell executions and `/proc/cpuinfo` / `/proc/version` file reads.
+- **Profile Management & GUI Control (`DeviceSpooferScreen.kt`)**: Full GUI dashboard with pre-configured device presets (Pixel 8 Pro, Galaxy S24 Ultra, ROG Phone 8, Xiaomi 14 Pro, Custom/Randomized), per-package targeting, persistent JSON configuration (`spoofer_config.json`), and live LSPosed / KernelSU profile synchronization.
+
+---
 
 ### [1.1.1] - Maintenance & Engine Upgrades
 

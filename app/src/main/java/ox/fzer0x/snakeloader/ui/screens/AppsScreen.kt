@@ -31,14 +31,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
+import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ox.fzer0x.snakeloader.AppInfo
+import ox.fzer0x.snakeloader.FridaManager
 import ox.fzer0x.snakeloader.ScriptManager
 import ox.fzer0x.snakeloader.ui.components.ReShiftCard
 import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
 import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
 import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
+import ox.fzer0x.snakeloader.ui.components.findActivity
 import ox.fzer0x.snakeloader.ui.viewmodels.AppsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,6 +50,7 @@ import ox.fzer0x.snakeloader.ui.viewmodels.AppsViewModel
 fun AppsScreen(
     viewModel: AppsViewModel,
     scriptManager: ScriptManager,
+    fridaManager: FridaManager,
     onNavigateToDetails: (String) -> Unit,
     onNavigateToToolbox: () -> Unit,
     onNavigateToSettings: () -> Unit
@@ -69,6 +74,14 @@ fun AppsScreen(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
+                        DropdownMenuItem(
+                            text = { Text("Close") },
+                            onClick = {
+                                showMenu = false
+                                context.findActivity()?.finishAndRemoveTask()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = "Close ReShift", tint = MaterialTheme.colorScheme.error) }
+                        )
                         DropdownMenuItem(
                             text = { Text("Frida Toolbox") },
                             onClick = {
@@ -123,9 +136,9 @@ fun AppsScreen(
                     singleLine = true,
                     shape = ReShiftButtonShape
                 )
-                
+
                 Spacer(Modifier.height(8.dp))
-                
+
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(horizontal = 4.dp)
@@ -192,14 +205,14 @@ fun AppsScreen(
 @Composable
 fun AppListItem(app: AppInfo, scriptManager: ScriptManager, onClick: () -> Unit) {
     val assignedCount = remember(app.packageName) { scriptManager.getAssignmentsForApp(app.packageName).size }
-    val iconBitmap = remember(app.packageName) { 
+    val iconBitmap = remember(app.packageName) {
         try {
             app.icon?.toBitmap()?.asImageBitmap()
         } catch (_: Exception) {
             null
         }
     }
-    
+
     ReShiftCard(onClick = onClick) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -224,9 +237,9 @@ fun AppListItem(app: AppInfo, scriptManager: ScriptManager, onClick: () -> Unit)
                     Text(app.label.take(1), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
-            
+
             Spacer(Modifier.width(14.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -261,10 +274,10 @@ fun AppListItem(app: AppInfo, scriptManager: ScriptManager, onClick: () -> Unit)
                 }
                 Spacer(Modifier.width(8.dp))
             }
-            
+
             Icon(
-                Icons.Default.ChevronRight, 
-                null, 
+                Icons.Default.ChevronRight,
+                null,
                 tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                 modifier = Modifier.size(20.dp)
             )
@@ -276,7 +289,8 @@ suspend fun loadInstalledApps(context: Context, includeSystemApps: Boolean = fal
     val pm = context.packageManager
     val packages = pm.getInstalledApplications(PackageManager.MATCH_ALL)
     packages.filter { appInfo ->
-        includeSystemApps || (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+        appInfo.packageName != context.packageName &&
+        (includeSystemApps || (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0)
     }.map { appInfo ->
         val label = pm.getApplicationLabel(appInfo).toString()
         val icon = try { pm.getApplicationIcon(appInfo) } catch (e: Exception) { null }

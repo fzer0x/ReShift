@@ -41,8 +41,17 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.os.Build
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import ox.fzer0x.snakeloader.ui.viewmodels.StatusViewModel
+import ox.fzer0x.snakeloader.ui.components.ReShiftBootAnimation
 import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
 import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
 
@@ -74,8 +83,21 @@ class MainActivity : ComponentActivity() {
                 val zygiskManager = viewModel.zygiskManager
                 val updateManager = viewModel.updateManager
 
+                val statusViewModel: StatusViewModel = viewModel(
+                    factory = object : ViewModelProvider.Factory {
+                        @Suppress("UNCHECKED_CAST")
+                        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                            return StatusViewModel(fridaManager, scriptManager, settingsManager) as T
+                        }
+                    }
+                )
+
+                var isBooting by remember { mutableStateOf(true) }
+                var bootStepText by remember { mutableStateOf("[1/5] Initializing ReShift Boot Engine...") }
+                var bootProgress by remember { mutableFloatStateOf(0.05f) }
+
                 var showModuleDialog by remember { mutableStateOf<ModuleDialogType?>(null) }
-                var showTelegramDialog by remember { 
+                var showTelegramDialog by remember {
                     mutableStateOf(!settingsManager.isTelegramDialogDismissed) 
                 }
 
@@ -93,26 +115,53 @@ class MainActivity : ComponentActivity() {
                     }
                     
                     launch(Dispatchers.IO) {
+                        withContext(Dispatchers.Main) {
+                            bootStepText = "[1/5] Checking Root Access Environment..."
+                            bootProgress = 0.15f
+                        }
+                        val hasRoot = fridaManager.hasRootAccess(forceCheck = true)
+
+                        withContext(Dispatchers.Main) {
+                            bootStepText = "[2/5] Initializing Repositories & Script Engine..."
+                            bootProgress = 0.35f
+                        }
                         githubApiService.initialize()
                         scriptManager.initialize()
-                        
-                        // Small delay to allow root environment to initialize
-                        kotlinx.coroutines.delay(2000)
-                        
+
+                        withContext(Dispatchers.Main) {
+                            bootStepText = "[3/5] Verifying ReShift Root Module Status..."
+                            bootProgress = 0.55f
+                        }
                         val moduleManager = ModuleManager(this@MainActivity, settingsManager)
                         val isInstalled = moduleManager.isModuleInstalled()
                         val installedVersionCode = moduleManager.getModuleVersionCode()
                         val assetVersionCode = moduleManager.getAssetModuleVersionCode()
-                        
-                        Log.d("MainActivity", "Module check: installed=$isInstalled, vCode=$installedVersionCode, assetVCode=$assetVersionCode")
 
-                        if (!isInstalled) {
-                            showModuleDialog = ModuleDialogType.REQUIRED
-                        } else if (installedVersionCode < assetVersionCode) {
-                            showModuleDialog = ModuleDialogType.UPDATE
+                        withContext(Dispatchers.Main) {
+                            bootStepText = "[4/5] Loading Frida Engine & Home Status Environment..."
+                            bootProgress = 0.75f
                         }
-                        
-                        // Check for App Updates
+                        if (hasRoot && !fridaManager.isFridaServerRunning()) {
+                            fridaManager.startFridaServer()
+                        }
+
+                        statusViewModel.refreshStatus(this@MainActivity, force = true)
+
+                        withContext(Dispatchers.Main) {
+                            bootStepText = "[5/5] System Boot Complete"
+                            bootProgress = 1.0f
+                        }
+                        delay(350)
+
+                        withContext(Dispatchers.Main) {
+                            if (!isInstalled) {
+                                showModuleDialog = ModuleDialogType.REQUIRED
+                            } else if (installedVersionCode < assetVersionCode) {
+                                showModuleDialog = ModuleDialogType.UPDATE
+                            }
+                            isBooting = false
+                        }
+
                         updateManager.checkForUpdates()
                     }
                 }
@@ -171,6 +220,7 @@ class MainActivity : ComponentActivity() {
                         settingsManager = settingsManager,
                         zygiskManager = zygiskManager,
                         updateManager = updateManager,
+                        statusViewModel = statusViewModel,
                         modifier = Modifier.padding(innerPadding)
                     )
 
@@ -237,6 +287,19 @@ class MainActivity : ComponentActivity() {
                             updateManager.resetState()
                         }
                     )
+
+                    AnimatedVisibility(
+                        visible = isBooting,
+                        enter = fadeIn(),
+                        exit = fadeOut(animationSpec = tween(600))
+                    ) {
+                        ReShiftBootAnimation(
+                            currentStepText = bootStepText,
+                            progress = bootProgress,
+                            isComplete = bootProgress >= 1f,
+                            onSkip = { isBooting = false }
+                        )
+                    }
                 }
             }
         }

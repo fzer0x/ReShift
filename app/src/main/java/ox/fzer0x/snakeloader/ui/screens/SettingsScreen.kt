@@ -37,7 +37,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ox.fzer0x.snakeloader.OverlayService
 import ox.fzer0x.snakeloader.SettingsManager
 import ox.fzer0x.snakeloader.FridaManager
@@ -47,6 +49,7 @@ import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
 import ox.fzer0x.snakeloader.ui.components.ReShiftButtonShape
 import ox.fzer0x.snakeloader.ui.components.ReShiftChipShape
 import ox.fzer0x.snakeloader.ui.components.ReShiftDialogShape
+import ox.fzer0x.snakeloader.ui.components.FridaBinaryManagerCard
 import ox.fzer0x.snakeloader.ui.components.StatusRow
 import ox.fzer0x.snakeloader.ui.components.StatusBadge
 import ox.fzer0x.snakeloader.ui.components.SectionHeader
@@ -60,9 +63,9 @@ import ox.fzer0x.snakeloader.utils.StealthUtils
 fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val settingsManager = viewModel.fridaManager.settings 
+    val settingsManager = viewModel.fridaManager.settings
     val fridaManager = viewModel.fridaManager
-    
+
     var isOverlayEnabled by remember { mutableStateOf(viewModel.fridaManager.settings.isOverlayEnabled) }
     var isLogcatOverlayEnabled by remember { mutableStateOf(settingsManager.isLogcatOverlayEnabled) }
     var isFridaOverlayEnabled by remember { mutableStateOf(settingsManager.isFridaOverlayEnabled) }
@@ -70,7 +73,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     var overlayOpacity by remember { mutableStateOf(settingsManager.overlayOpacity) }
 
     var isStealthModeEnabled by remember { mutableStateOf(settingsManager.isStealthModeEnabled) }
-    var isAppMasked by remember { 
+    var isAppMasked by remember {
         mutableStateOf(context.packageManager.getComponentEnabledSetting(
             ComponentName(context, "ox.fzer0x.snakeloader.LauncherMasked")
         ) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED)
@@ -84,12 +87,17 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     var showInstallationDialog by remember { mutableStateOf(false) }
 
     fun refreshSystemStatus() {
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             val status = fridaManager.getFridaStatus()
-            isSelinuxPermissive = status["selinux_permissive"] as? Boolean ?: false
-            isPtraceScopeDisabled = status["ptrace_scope_disabled"] as? Boolean ?: false
-            isYamaSupported = fridaManager.isYamaSupported()
-            isStealthModeEnabled = status["stealth_enabled"] as? Boolean ?: false
+            val yamaSupported = fridaManager.isYamaSupported()
+
+            withContext(Dispatchers.Main) {
+                isSelinuxPermissive = status["selinux_permissive"] as? Boolean ?: false
+                isPtraceScopeDisabled = status["ptrace_scope_disabled"] as? Boolean ?: false
+                isYamaSupported = yamaSupported
+                isStealthModeEnabled = status["stealth_enabled"] as? Boolean ?: false
+            }
+
             viewModel.refreshModuleStatus(context)
         }
     }
@@ -271,14 +279,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                             title = "Mask App Icon",
                             description = "Show as 'System Storage'",
                             checked = isAppMasked,
-                            onCheckedChange = { 
+                            onCheckedChange = {
                                 isAppMasked = it
                                 StealthUtils.setAppMasked(context, it)
                             }
                         )
-                        
+
                         Spacer(Modifier.height(12.dp))
-                        
+
                         Button(
                             onClick = { StealthUtils.toggleAppIcon(context, true) },
                             modifier = Modifier.fillMaxWidth(),
@@ -368,20 +376,18 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                FilterChip(
-                                    selected = viewModel.geminiModel == "gemini-3.6-flash",
-                                    onClick = { viewModel.updateGeminiModel("gemini-3.6-flash") },
-                                    label = { Text("Gemini 3.6 Flash") },
-                                    shape = ReShiftChipShape,
-                                    leadingIcon = { Icon(Icons.Default.AutoAwesome, null, modifier = Modifier.size(16.dp)) }
-                                )
-                                FilterChip(
-                                    selected = viewModel.geminiModel == "gemini-3.5-flash-lite",
-                                    onClick = { viewModel.updateGeminiModel("gemini-3.5-flash-lite") },
-                                    label = { Text("3.5 Flash Lite") },
-                                    shape = ReShiftChipShape,
-                                    leadingIcon = { Icon(Icons.Default.Bolt, null, modifier = Modifier.size(16.dp)) }
-                                )
+                                SettingsManager.SUPPORTED_GEMINI_MODELS.forEach { (modelId, modelLabel) ->
+                                    FilterChip(
+                                        selected = viewModel.geminiModel == modelId,
+                                        onClick = { viewModel.updateGeminiModel(modelId) },
+                                        label = { Text(modelLabel) },
+                                        shape = ReShiftChipShape,
+                                        leadingIcon = {
+                                            val icon = if (modelId.contains("lite")) Icons.Default.Bolt else Icons.Default.AutoAwesome
+                                            Icon(icon, null, modifier = Modifier.size(16.dp))
+                                        }
+                                    )
+                                }
                             }
                         } else if (viewModel.aiProvider == "ON_DEVICE_GGUF") {
                             val localGgufFiles = remember { viewModel.getDownloadedGgufModels(context) }
@@ -718,6 +724,11 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
             }
 
             item {
+                SectionHeader("Frida Binary Engine & Downloader")
+                FridaBinaryManagerCard(fridaManager = fridaManager)
+            }
+
+            item {
                 SectionHeader("Core Module")
                 ReShiftCard {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -739,7 +750,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                             color = if (viewModel.isModuleServiceRunning) SuccessGreen else WarningOrange,
                             icon = Icons.Default.PlayCircle
                         )
-                        
+
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 12.dp),
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
@@ -769,7 +780,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                         )
                         Spacer(Modifier.height(12.dp))
                         Button(
-                            onClick = { 
+                            onClick = {
                                 scope.launch {
                                     viewModel.updateManager.checkForUpdates()
                                 }
@@ -793,7 +804,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     if (showInstallationDialog) {
         AlertDialog(
             onDismissRequest = { if (!viewModel.isInstalling) showInstallationDialog = false },
-            title = { 
+            title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Terminal, null, modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(12.dp))
@@ -810,7 +821,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                     ) {
                         val scrollState = rememberLazyListState()
                         val lines = viewModel.installationLog.split("\n")
-                        
+
                         LaunchedEffect(lines.size) {
                             if (lines.isNotEmpty()) {
                                 scrollState.animateScrollToItem(lines.size - 1)
@@ -832,7 +843,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                             }
                         }
                     }
-                    
+
                     if (viewModel.isInstalling) {
                         LinearProgressIndicator(
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
@@ -860,7 +871,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                             Text("Reboot", fontWeight = FontWeight.Bold)
                         }
                     }
-                    
+
                     TextButton(
                         onClick = { showInstallationDialog = false },
                         enabled = !viewModel.isInstalling,

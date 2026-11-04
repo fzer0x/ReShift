@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -49,13 +50,16 @@ import ox.fzer0x.snakeloader.AppInfo
 import ox.fzer0x.snakeloader.ai.AgentExecutionMode
 import ox.fzer0x.snakeloader.ai.AiGoalPreset
 import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
+import ox.fzer0x.snakeloader.ui.components.findActivity
 import ox.fzer0x.snakeloader.ui.viewmodels.AutonomousAgentState
+import ox.fzer0x.snakeloader.ui.viewmodels.DumperEngine
 import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppClassData
 import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppFieldData
 import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppFilter
 import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppMethodData
 import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppPropertyData
 import ox.fzer0x.snakeloader.ui.viewmodels.Il2CppViewModel
+import ox.fzer0x.snakeloader.utils.ShellExecutor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +70,7 @@ fun Il2CppScreen(
 ) {
     val context = LocalContext.current
 
+    val dumperEngine = viewModel.dumperEngine.value
     val selectedApp = viewModel.selectedApp.value
     val showAppPicker = viewModel.showAppPicker.value
     val allApps = viewModel.allApps.value
@@ -91,7 +96,7 @@ fun Il2CppScreen(
     Scaffold(
         topBar = {
             ReShiftTopAppBar(
-                title = "IL2CPP Inspector",
+                title = if (dumperEngine == DumperEngine.UE4) "UE4 / UE5 Inspector" else "IL2CPP Inspector",
                 subtitle = if (selectedApp != null) "${selectedApp.label} (${selectedApp.packageName})" else "No app selected",
                 onBack = onBack,
                 actions = {
@@ -143,6 +148,24 @@ fun Il2CppScreen(
                             leadingIcon = { Icon(Icons.Default.DataObject, null) }
                         )
                     }
+
+                    var showOptionMenu by remember { mutableStateOf(false) }
+                    IconButton(onClick = { showOptionMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                    }
+                    DropdownMenu(
+                        expanded = showOptionMenu,
+                        onDismissRequest = { showOptionMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Close") },
+                            onClick = {
+                                showOptionMenu = false
+                                context.findActivity()?.finishAndRemoveTask()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Close, contentDescription = "Close ReShift", tint = MaterialTheme.colorScheme.error) }
+                        )
+                    }
                 }
             )
         }
@@ -186,9 +209,9 @@ fun Il2CppScreen(
                             modifier = Modifier.weight(1f)
                         )
                         MetricBadge(
-                            icon = Icons.Default.Storage,
+                            icon = if (dumperEngine == DumperEngine.UE4) Icons.Default.ViewInAr else Icons.Default.Storage,
                             label = "Engine",
-                            value = "SQLite Cache",
+                            value = dumperEngine.displayName,
                             color = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.weight(1f)
                         )
@@ -277,6 +300,98 @@ fun Il2CppScreen(
 
                         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
+                        // SECTION 1.5: TARGET GAME ENGINE SELECTOR (IL2CPP vs UE4)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        if (dumperEngine == DumperEngine.UE4) Icons.Default.ViewInAr else Icons.Default.Inventory2,
+                                        null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Engine Dumper Tool", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                }
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = dumperEngine.displayName,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilterChip(
+                                    selected = dumperEngine == DumperEngine.IL2CPP,
+                                    onClick = { viewModel.setDumperEngine(DumperEngine.IL2CPP) },
+                                    label = { Text("Unity IL2CPP", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+                                    leadingIcon = {
+                                        if (dumperEngine == DumperEngine.IL2CPP) {
+                                            Icon(Icons.Default.Check, null, modifier = Modifier.size(14.dp))
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f).height(36.dp),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                FilterChip(
+                                    selected = dumperEngine == DumperEngine.UE4,
+                                    onClick = { viewModel.setDumperEngine(DumperEngine.UE4) },
+                                    label = {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Text(
+                                                text = "Unreal 4/5",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Surface(
+                                                color = MaterialTheme.colorScheme.primary,
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = "NEW",
+                                                    fontSize = 8.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    color = MaterialTheme.colorScheme.onPrimary,
+                                                    maxLines = 1,
+                                                    softWrap = false,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
+                                    },
+                                    leadingIcon = {
+                                        if (dumperEngine == DumperEngine.UE4) {
+                                            Icon(Icons.Default.Check, null, modifier = Modifier.size(14.dp))
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f).height(36.dp),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                            }
+                        }
+
+                        HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
                         // SECTION 2: INJECTION DELAY CONFIGURATION
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(
@@ -313,14 +428,15 @@ fun Il2CppScreen(
 
                             LazyRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(horizontal = 2.dp)
                             ) {
-                                items(listOf(0, 3, 5, 7, 10, 15, 20)) { delayOpt ->
+                                items(listOf(0, 3, 5, 7, 10, 15, 20, 30)) { delayOpt ->
                                     FilterChip(
                                         selected = injectionDelaySeconds == delayOpt,
                                         onClick = { viewModel.setInjectionDelay(delayOpt) },
-                                        label = { Text("${delayOpt}s", fontSize = 11.sp) },
-                                        modifier = Modifier.height(30.dp),
+                                        label = { Text("${delayOpt}s", fontSize = 12.sp, fontWeight = FontWeight.SemiBold) },
+                                        modifier = Modifier.height(32.dp),
                                         shape = RoundedCornerShape(8.dp)
                                     )
                                 }
@@ -330,40 +446,65 @@ fun Il2CppScreen(
                         HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
                         // SECTION 3: ACTION CONTROLS
-                        Row(
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Button(
-                                onClick = { viewModel.startInspection(context) },
-                                enabled = selectedApp != null && !isDumping,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                if (isDumping) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(16.dp),
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        strokeWidth = 2.dp
+                            if (isDumping) {
+                                Button(
+                                    onClick = { viewModel.stopInspection() },
+                                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error,
+                                        contentColor = MaterialTheme.colorScheme.onError
                                     )
+                                ) {
+                                    Icon(Icons.Default.Stop, null, modifier = Modifier.size(20.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Extracting Metadata...", fontSize = 13.sp)
-                                } else {
-                                    Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Launch & Inspect", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("Stop Inspection", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                }
+                            } else {
+                                Button(
+                                    onClick = { viewModel.startInspection(context) },
+                                    enabled = selectedApp != null,
+                                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Launch & Inspect", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 }
                             }
 
-                            OutlinedButton(
-                                onClick = { viewModel.loadSavedDump(context) },
-                                enabled = !isDumping,
-                                shape = RoundedCornerShape(12.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Default.Cached, null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Cached Dump", fontSize = 12.sp)
+                                OutlinedButton(
+                                    onClick = { viewModel.loadSavedDump(context) },
+                                    enabled = !isDumping,
+                                    modifier = Modifier.weight(1f).height(42.dp),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Default.Cached, null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Cached Dump", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
+
+                                OutlinedButton(
+                                    onClick = { viewModel.clearAll(context) },
+                                    enabled = !isDumping,
+                                    modifier = Modifier.weight(1f).height(42.dp),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Icon(Icons.Default.CleaningServices, null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Clear All", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                }
                             }
                         }
                     }
@@ -378,7 +519,11 @@ fun Il2CppScreen(
                     color = if (errorMessage != null) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
                     else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
                 ) {
-                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = if (errorMessage != null) Icons.Default.ErrorOutline else Icons.Default.Info,
@@ -406,7 +551,10 @@ fun Il2CppScreen(
 
             // SEARCH BAR & FILTER CHIPS TOOLBAR
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     OutlinedTextField(
                         value = searchText,
                         onValueChange = { viewModel.setSearchText(it) },
@@ -450,7 +598,7 @@ fun Il2CppScreen(
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
+                            modifier = Modifier.weight(1f)
                         )
 
                         Row(
@@ -507,20 +655,23 @@ fun Il2CppScreen(
                     ElevatedCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 24.dp),
+                            .padding(vertical = 12.dp),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(32.dp),
+                                .padding(24.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
                                 Icon(
                                     Icons.Default.SearchOff,
                                     contentDescription = null,
-                                    modifier = Modifier.size(52.dp),
+                                    modifier = Modifier.size(48.dp),
                                     tint = MaterialTheme.colorScheme.outline
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
@@ -528,7 +679,9 @@ fun Il2CppScreen(
                                     text = if (isDumping) "Extracting metadata from target process memory..." else "No classes matched your filter or search query.",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.outline
+                                    color = MaterialTheme.colorScheme.outline,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                                 if (!isDumping && selectedApp == null) {
                                     Spacer(modifier = Modifier.height(12.dp))
@@ -1490,8 +1643,14 @@ fun Il2CppScreen(
                             Tab(
                                 selected = agentTabSelection == 2,
                                 onClick = { agentTabSelection = 2 },
-                                text = { Text("sql.db AST Context", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                text = { Text("sql.db AST", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                                 icon = { Icon(Icons.Default.Storage, null, modifier = Modifier.size(14.dp)) }
+                            )
+                            Tab(
+                                selected = agentTabSelection == 3,
+                                onClick = { agentTabSelection = 3 },
+                                text = { Text("Script Diff", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                icon = { Icon(Icons.Default.Difference, null, modifier = Modifier.size(14.dp)) }
                             )
                         }
 
@@ -1587,6 +1746,45 @@ fun Il2CppScreen(
                                                 color = Color(0xFF79C0FF),
                                                 lineHeight = 15.sp
                                             )
+                                        }
+                                    }
+                                    3 -> {
+                                        // TAB 3: SCRIPT DIFF VIEWER (COMPARE INITIAL VS REPAIRED SCRIPT)
+                                        val initialScript = agentLogs.find { it.stepType == "GENERATE" }?.codeSnippet ?: ""
+                                        val repairedScript = viewModel.aiGeneratedScript.value ?: agentLogs.findLast { it.stepType == "FIX" }?.codeSnippet ?: ""
+
+                                        Box(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                            if (initialScript.isBlank() || repairedScript.isBlank() || initialScript == repairedScript) {
+                                                Text(
+                                                    text = "# Script diff ready. Diff between candidate script and repaired script will appear here during AI repair loops.",
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontSize = 11.sp,
+                                                    color = Color(0xFF8B949E)
+                                                )
+                                            } else {
+                                                val diffLines = computeScriptDiffLines(initialScript, repairedScript)
+                                                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                                    diffLines.forEach { (lineText, status) ->
+                                                        val (textColor, bgColor) = when (status) {
+                                                            "ADDED" -> Pair(Color(0xFF3FB950), Color(0xFF238636).copy(alpha = 0.2f))
+                                                            "REMOVED" -> Pair(Color(0xFFF85149), Color(0xFFDA3633).copy(alpha = 0.2f))
+                                                            else -> Pair(Color(0xFF8B949E), Color.Transparent)
+                                                        }
+                                                        Surface(
+                                                            color = bgColor,
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        ) {
+                                                            Text(
+                                                                text = lineText,
+                                                                fontFamily = FontFamily.Monospace,
+                                                                fontSize = 10.sp,
+                                                                color = textColor,
+                                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -2567,4 +2765,27 @@ private fun AppPickerDialog(
             }
         }
     )
+}
+
+private fun computeScriptDiffLines(oldScript: String, newScript: String): List<Pair<String, String>> {
+    val oldLines = oldScript.lines()
+    val newLines = newScript.lines()
+    val result = mutableListOf<Pair<String, String>>()
+
+    var i = 0
+    var j = 0
+    while (i < oldLines.size || j < newLines.size) {
+        if (i < oldLines.size && j < newLines.size && oldLines[i] == newLines[j]) {
+            result.add(Pair("  ${oldLines[i]}", "UNCHANGED"))
+            i++
+            j++
+        } else if (j < newLines.size && (i >= oldLines.size || !oldLines.contains(newLines[j]))) {
+            result.add(Pair("+ ${newLines[j]}", "ADDED"))
+            j++
+        } else if (i < oldLines.size) {
+            result.add(Pair("- ${oldLines[i]}", "REMOVED"))
+            i++
+        }
+    }
+    return result
 }

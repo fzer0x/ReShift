@@ -35,8 +35,15 @@ data class MonitoringResult(
     val hasSuccessLog: Boolean = false,
     val successLogMessage: String? = null,
     val fullConsoleLogs: String = "",
-    val logcatLogs: String = ""
+    val logcatLogs: String = "",
+    val isAntiCheatDetected: Boolean = false
 )
+
+sealed class AgentTool {
+    data class QueryDb(val keywords: List<String>, val offsets: List<String>) : AgentTool()
+    data class ListModules(val packageName: String) : AgentTool()
+    data class InspectMemory(val targetAddress: String, val length: Int) : AgentTool()
+}
 
 enum class AgentExecutionMode(val label: String) {
     AUTO("Auto Select (Smart Spawn/Attach)"),
@@ -340,6 +347,12 @@ setTimeout(function() {
                 """.trimIndent()
             }
 
+            val validation = JsSyntaxValidator.validateAndSanitize(scriptToInject)
+            scriptToInject = validation.sanitizedScript
+            if (!validation.isValid) {
+                addLogStep("SYNTAX_WARN", "[Iteration $iterTag] Pre-injection JS validator warning: ${validation.errorMessage}")
+            }
+
             // Determine execution strategy: SPAWN (-f) or ATTACH (-n)
             val activeMode = _executionMode.value
             val useAttach = when (activeMode) {
@@ -487,6 +500,10 @@ setTimeout(function() {
 
                 if (fixResult.isSuccess) {
                     currentScript = aiAssistant.extractJsCode(fixResult.getOrThrow())
+                    if (monitorRes.isAntiCheatDetected) {
+                        addLogStep("STEALTH_GUARD", "Anti-Cheat crash detected in attempt #$iteration. Auto-injecting ReShift Anti-Cheat Stealth Guard...")
+                        currentScript = applyStealthGuard(currentScript)
+                    }
                     _streamingScript.value = currentScript
                     addLogStep("FIX", "[Attempt #$iteration] Revised Senior Frida script generated cleanly.", currentScript)
                 } else {
@@ -588,12 +605,21 @@ setTimeout(function() {
             .reversed()
             .joinToString("\n") { "[${it.packageName}] ${it.message}" }
 
+        val isAntiCheatSignal = detectedError?.let { err ->
+            err.contains("SIGSEGV", ignoreCase = true) ||
+            err.contains("SIGTRAP", ignoreCase = true) ||
+            err.contains("ptrace", ignoreCase = true) ||
+            err.contains("frida", ignoreCase = true) ||
+            err.contains("Access violation", ignoreCase = true)
+        } ?: false
+
         return@withContext MonitoringResult(
             error = detectedError,
             hasSuccessLog = detectedSuccessLog != null,
             successLogMessage = detectedSuccessLog,
             fullConsoleLogs = allFridaLogs,
-            logcatLogs = allLogcatLogs
+            logcatLogs = allLogcatLogs,
+            isAntiCheatDetected = isAntiCheatSignal
         )
     }
 
@@ -673,6 +699,25 @@ setTimeout(function() {
         return Pair(keywords.toList(), offsets.toList())
     }
 
+    private fun applyStealthGuard(script: String): String {
+        val stealthSnippet = """
+// === RESHIFT ANTI-CHEAT STEALTH GUARD PRE-FLIGHT ===
+(function() {
+    try {
+        const ptrace = Module.findExportByName(null, "ptrace");
+        if (ptrace) {
+            Interceptor.replace(ptrace, new NativeCallback(function() { return 0; }, 'int', ['int', 'int', 'pointer', 'pointer']));
+        }
+    } catch (e) {}
+})();
+        """.trimIndent()
+        return if (!script.contains("RESHIFT ANTI-CHEAT STEALTH GUARD")) {
+            "$stealthSnippet\n\n$script"
+        } else {
+            script
+        }
+    }
+
     private fun addLogStep(stepType: String, message: String, codeSnippet: String? = null) {
         val timeStr = try {
             SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
@@ -686,5 +731,175 @@ setTimeout(function() {
             codeSnippet = codeSnippet
         )
         _agentLogs.value = _agentLogs.value + newStep
+    }
+}
+
+data class JsValidationResult(
+    val isValid: Boolean,
+    val sanitizedScript: String,
+    val errorMessage: String? = null
+)
+
+object JsSyntaxValidator {
+
+    fun validateAndSanitize(script: String): JsValidationResult {
+        if (script.isBlank()) {
+            return JsValidationResult(false, "", "Script is empty")
+        }
+
+        var cleaned = script.trim()
+        if (cleaned.startsWith("```")) {
+            cleaned = cleaned.substringAfter("\n").trimStart()
+        }
+        if (cleaned.endsWith("```")) {
+            cleaned = cleaned.substringBeforeLast("```").trimEnd()
+        }
+
+        // De-duplicate top-level `const TAG = ...;` declarations if LLM produced duplicates
+        val tagMatches = Regex("const\\s+TAG\\s*=").findAll(cleaned).toList()
+        if (tagMatches.size > 1) {
+            var replacedFirst = false
+            cleaned = Regex("const\\s+TAG\\s*=[^;]+;").replace(cleaned) { match ->
+                if (!replacedFirst) {
+                    replacedFirst = true
+                    match.value
+                } else {
+                    "// duplicate TAG removed: ${match.value}"
+                }
+            }
+        }
+
+        // Bracket & string literal lexer state machine
+        val curlyStack = mutableListOf<Int>()
+        val parenStack = mutableListOf<Int>()
+        val squareStack = mutableListOf<Int>()
+
+        var inSingleComment = false
+        var inMultiComment = false
+        var inSingleQuote = false
+        var inDoubleQuote = false
+        var inTemplateLiteral = false
+        var isEscaped = false
+
+        var currentLine = 1
+        val len = cleaned.length
+        var i = 0
+
+        while (i < len) {
+            val c = cleaned[i]
+            val nextC = if (i + 1 < len) cleaned[i + 1] else ' '
+
+            if (c == '\n') {
+                currentLine++
+                inSingleComment = false
+                isEscaped = false
+                i++
+                continue
+            }
+
+            if (inSingleComment) {
+                i++
+                continue
+            }
+
+            if (inMultiComment) {
+                if (c == '*' && nextC == '/') {
+                    inMultiComment = false
+                    i += 2
+                } else {
+                    i++
+                }
+                continue
+            }
+
+            if (isEscaped) {
+                isEscaped = false
+                i++
+                continue
+            }
+
+            if (c == '\\') {
+                isEscaped = true
+                i++
+                continue
+            }
+
+            if (inSingleQuote) {
+                if (c == '\'') inSingleQuote = false
+                i++
+                continue
+            }
+
+            if (inDoubleQuote) {
+                if (c == '"') inDoubleQuote = false
+                i++
+                continue
+            }
+
+            if (inTemplateLiteral) {
+                if (c == '`') inTemplateLiteral = false
+                i++
+                continue
+            }
+
+            if (c == '/' && nextC == '/') {
+                inSingleComment = true
+                i += 2
+                continue
+            }
+            if (c == '/' && nextC == '*') {
+                inMultiComment = true
+                i += 2
+                continue
+            }
+
+            if (c == '\'') {
+                inSingleQuote = true
+                i++
+                continue
+            }
+            if (c == '"') {
+                inDoubleQuote = true
+                i++
+                continue
+            }
+            if (c == '`') {
+                inTemplateLiteral = true
+                i++
+                continue
+            }
+
+            when (c) {
+                '{' -> curlyStack.add(currentLine)
+                '}' -> if (curlyStack.isNotEmpty()) curlyStack.removeAt(curlyStack.size - 1) else return JsValidationResult(false, cleaned, "Unmatched closing brace '}' at line $currentLine")
+                '(' -> parenStack.add(currentLine)
+                ')' -> if (parenStack.isNotEmpty()) parenStack.removeAt(parenStack.size - 1) else return JsValidationResult(false, cleaned, "Unmatched closing parenthesis ')' at line $currentLine")
+                '[' -> squareStack.add(currentLine)
+                ']' -> if (squareStack.isNotEmpty()) squareStack.removeAt(squareStack.size - 1) else return JsValidationResult(false, cleaned, "Unmatched closing bracket ']' at line $currentLine")
+            }
+
+            i++
+        }
+
+        if (inMultiComment) {
+            return JsValidationResult(false, cleaned, "Unclosed multi-line comment '/* ...'")
+        }
+        if (inSingleQuote || inDoubleQuote) {
+            return JsValidationResult(false, cleaned, "Unclosed string quote")
+        }
+        if (inTemplateLiteral) {
+            return JsValidationResult(false, cleaned, "Unclosed template literal '`'")
+        }
+        if (curlyStack.isNotEmpty()) {
+            return JsValidationResult(false, cleaned, "Unclosed opening brace '{' opened at line ${curlyStack.last()}")
+        }
+        if (parenStack.isNotEmpty()) {
+            return JsValidationResult(false, cleaned, "Unclosed opening parenthesis '(' opened at line ${parenStack.last()}")
+        }
+        if (squareStack.isNotEmpty()) {
+            return JsValidationResult(false, cleaned, "Unclosed opening bracket '[' opened at line ${squareStack.last()}")
+        }
+
+        return JsValidationResult(true, cleaned)
     }
 }

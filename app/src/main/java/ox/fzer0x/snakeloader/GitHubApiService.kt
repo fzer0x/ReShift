@@ -15,6 +15,7 @@ import javax.net.ssl.HttpsURLConnection
 import ox.fzer0x.snakeloader.utils.ShellExecutor
 import ox.fzer0x.snakeloader.utils.InputValidator
 import ox.fzer0x.snakeloader.security.CertificatePinner
+import java.net.URI
 
 class GitHubApiService(private val context: Context) {
     companion object {
@@ -220,11 +221,12 @@ class GitHubApiService(private val context: Context) {
             }
 
             val cleanPath = path.trim('/')
-            val urlString = if (cleanPath.isEmpty()) {
+            val rawUrlString = if (cleanPath.isEmpty()) {
                 "$GITHUB_API_BASE/repos/$owner/$repo/contents"
             } else {
                 "$GITHUB_API_BASE/repos/$owner/$repo/contents/$cleanPath"
             }
+            val urlString = encodeUrlIfNeeded(rawUrlString)
 
             try {
                 Log.d(TAG, "Standard Request: $urlString")
@@ -474,10 +476,21 @@ class GitHubApiService(private val context: Context) {
         return files.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
     }
 
+    private fun encodeUrlIfNeeded(urlString: String): String {
+        return try {
+            val url = URL(urlString)
+            val uri = URI(url.protocol, url.userInfo, url.host, url.port, url.path, url.query, url.ref)
+            uri.toASCIIString()
+        } catch (_: Exception) {
+            urlString.replace(" ", "%20")
+        }
+    }
+
     suspend fun downloadScriptContent(downloadUrl: String): String? {
         return withContext(Dispatchers.IO) {
+            val safeUrl = encodeUrlIfNeeded(downloadUrl)
             try {
-                val url = URL(downloadUrl)
+                val url = URL(safeUrl)
                 val connection = url.openConnection() as HttpURLConnection
                 
                 if (connection is HttpsURLConnection) {
@@ -494,11 +507,126 @@ class GitHubApiService(private val context: Context) {
                     return@withContext connection.inputStream.bufferedReader().use { it.readText() }
                 }
                 
-                executeRootCurl(downloadUrl)
+                executeRootCurl(safeUrl)
             } catch (e: Exception) {
                 Log.e(TAG, "Download failed, trying root fallback...")
-                executeRootCurl(downloadUrl)
+                executeRootCurl(safeUrl)
             }
         }
     }
+
+    suspend fun fetchReShiftModules(forceRefresh: Boolean = false): Result<List<ReShiftModuleFile>> {
+        return withContext(Dispatchers.IO) {
+            val owner = "fzer0x"
+            val repo = "ReShift"
+            val targetPrefix = "app/src/main/assets/ReShiftModules/"
+
+            try {
+                val treeUrlString = "$GITHUB_API_BASE/repos/$owner/$repo/git/trees/HEAD?recursive=1"
+                Log.d(TAG, "Fetching ReShift modules tree: $treeUrlString")
+                
+                val url = URL(encodeUrlIfNeeded(treeUrlString))
+                val connection = url.openConnection() as HttpURLConnection
+                
+                if (connection is HttpsURLConnection) {
+                    CertificatePinner.configureConnectionWithPinning(connection, "api.github.com")
+                }
+                
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("Accept", "application/vnd.github+json")
+                connection.setRequestProperty("User-Agent", "ReShift/1.0")
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+
+                val responseCode = connection.responseCode
+                if (responseCode == 200) {
+                    val response = connection.inputStream.bufferedReader().use { it.readText() }
+                    val jsonObject = JSONObject(response)
+                    val treeArray = jsonObject.optJSONArray("tree") ?: JSONArray()
+                    
+                    val result = mutableListOf<ReShiftModuleFile>()
+                    for (i in 0 until treeArray.length()) {
+                        val item = treeArray.getJSONObject(i)
+                        val path = item.optString("path")
+                        val type = item.optString("type")
+                        val size = item.optLong("size")
+
+                        if (type == "blob" && path.startsWith(targetPrefix) && path.endsWith(".js")) {
+                            val relativePath = path.removePrefix(targetPrefix)
+                            val fileName = relativePath.substringAfterLast("/")
+                            val folder = if (relativePath.contains("/")) relativePath.substringBeforeLast("/") else ""
+                            val rawDownloadUrl = encodeUrlIfNeeded("https://raw.githubusercontent.com/fzer0x/ReShift/main/$path")
+
+                            result.add(
+                                ReShiftModuleFile(
+                                    fileName = fileName,
+                                    path = relativePath,
+                                    downloadUrl = rawDownloadUrl,
+                                    size = size,
+                                    folder = folder
+                                )
+                            )
+                        }
+                    }
+
+                    if (result.isNotEmpty()) {
+                        Log.d(TAG, "Successfully fetched ${result.size} ReShift modules from git tree")
+                        return@withContext Result.success(result.sortedWith(compareBy({ it.folder }, { it.fileName })))
+                    }
+                } else {
+                    Log.w(TAG, "Git tree request returned HTTP $responseCode")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Git tree request failed: ${e.message}, falling back to contents API")
+            }
+
+            try {
+                val list = fetchReShiftModulesContentsFallback("app/src/main/assets/ReShiftModules")
+                if (list.isNotEmpty()) {
+                    Result.success(list.sortedWith(compareBy({ it.folder }, { it.fileName })))
+                } else {
+                    Result.failure(Exception("No modules found at $targetPrefix"))
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to fetch ReShift modules via contents fallback", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    private suspend fun fetchReShiftModulesContentsFallback(path: String): List<ReShiftModuleFile> {
+        val owner = "fzer0x"
+        val repo = "ReShift"
+        val targetPrefix = "app/src/main/assets/ReShiftModules/"
+        val list = mutableListOf<ReShiftModuleFile>()
+
+        val contents = fetchRepositoryContents(owner, repo, path).getOrNull() ?: return emptyList()
+        for (file in contents) {
+            if (file.isDirectory) {
+                list.addAll(fetchReShiftModulesContentsFallback(file.path))
+            } else if (file.name.endsWith(".js")) {
+                val relativePath = if (file.path.startsWith(targetPrefix)) file.path.removePrefix(targetPrefix) else file.path
+                val folder = if (relativePath.contains("/")) relativePath.substringBeforeLast("/") else ""
+                val rawUrl = encodeUrlIfNeeded(file.downloadUrl.ifEmpty { "https://raw.githubusercontent.com/fzer0x/ReShift/main/${file.path}" })
+                list.add(
+                    ReShiftModuleFile(
+                        fileName = file.name,
+                        path = relativePath,
+                        downloadUrl = rawUrl,
+                        size = file.size,
+                        folder = folder
+                    )
+                )
+            }
+        }
+        return list
+    }
 }
+
+data class ReShiftModuleFile(
+    val fileName: String,
+    val path: String,
+    val downloadUrl: String,
+    val size: Long,
+    val folder: String
+)

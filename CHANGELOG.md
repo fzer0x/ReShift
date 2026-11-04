@@ -2,7 +2,6 @@
 
 All notable changes, design system unification, IL2CPP Inspector features, Frida binary upgrades, launcher fixes, and Autonomous AI Agent capabilities are documented in this file.
 
-<<<<<<< HEAD
 ---
 
 ## [1.2.0] - Universal UE4/UE5 Dumper, KernelSU Next & Performance Overhaul

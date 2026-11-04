@@ -1,4 +1,4 @@
-# 🐍 ReShift
+# ReShift
 
 **ReShift** is an advanced, high-performance Android security research, dynamic analysis, and reverse engineering suite. It unites the power of **Frida**, **Zygisk**, **C++ JNI On-Device GGUF LLM inference** (`llama.cpp`), **SQLite IL2CPP Inspector**, and **anti-detection stealth mechanics** into a mobile-first Jetpack Compose Material 3 interface.
 
@@ -8,8 +8,9 @@
 
 ---
 
-## 🚀 Key Features & Capabilities
+## Key Features & Capabilities
 
+<<<<<<< HEAD
 ### 🎮 Universal UE4 / UE5 Dumper & Unity IL2CPP Inspector
 Deep reverse engineering and in-memory metadata dumping for Unity IL2CPP and Unreal Engine 4/5 mobile games:
 - **Dual Dumper Engine (`DumperEngine`)**: Switch seamlessly between Unity IL2CPP (`il2cpp_inspector_dumper.js`) and Unreal Engine 4/5 (`assets/UE4_DUMP.js`).
@@ -19,6 +20,14 @@ Deep reverse engineering and in-memory metadata dumping for Unity IL2CPP and Unr
 - **SQLite Database Engine (`il2cpp_dumper.db`)**: Persistent local SQLite caching of all dumped metadata for instant offline reloads, high-speed search, and RPC batch streaming (`UE4_RPC_STREAM_BATCH`).
 - **Dashboard Overview Metrics Banner**: Real-time display of total parsed classes, active target application, and database engine status.
 - **Unified Control Center**: Target app selection, icon previews, engine selection chips with "NEW" badges, and configurable Frida injection delay slider (0 to 30 seconds).
+=======
+### IL2CPP Unity Inspector & Dumper
+Deep reverse engineering suite for Unity Android games utilizing the IL2CPP scripting backend:
+- **Native Metadata Extraction**: Direct extraction of metadata from `libil2cpp.so` and `global-metadata.dat`.
+- **SQLite Database Engine (`il2cpp_dumper.db`)**: Persistent local SQLite caching of all parsed C# metadata for instant offline reloads and rapid search.
+- **Dashboard Overview Metrics Banner**: Real-time display of total parsed C# classes, active target application, and database engine status.
+- **Unified Control Center**: Target app selection, icon previews, and a configurable Frida injection delay slider (0 to 30 seconds) with quick preset chips (`0s`, `3s`, `5s`, `7s`, `10s`, `15s`, `20s`).
+>>>>>>> 54ed380d48805d46ef1601f694a2866aa4fd9089
 - **Search & Filtering Toolbar**: Real-time filtering across class names, namespaces, methods, fields, and RVA offsets.
   - Filter by type: `All`, `Classes`, `Structs`, `Interfaces`, `Enums`.
   - **Prune DB**: One-click database cleaning to strip compiler-generated internal noise and anonymized classes.
@@ -32,6 +41,7 @@ Deep reverse engineering and in-memory metadata dumping for Unity IL2CPP and Unr
 
 ---
 
+<<<<<<< HEAD
 ### 🔍 Pure Kotlin DEX & ELF Inspector Engine
 Integrated static binary decompiler, native shared library symbol analyzer, and disassembly engine:
 - **Pure Kotlin DEX Parser (`DexParser.kt`)**: Zero-dependency parser for Android Dalvik Executable (`.dex`) files & multi-DEX APKs (`classes.dex`, `classes2.dex`, etc.). Extracts Class Descriptors, Superclasses, Method signatures, Access flags, Fields, String/Type/Proto pools, and Cross-References (XREFs).
@@ -50,6 +60,9 @@ System-wide and per-application hardware identity mask engine utilizing Xposed/L
 ---
 
 ### 🤖 ReShift Autonomous AI Agent & LLM Router
+=======
+### ReShift Autonomous AI Agent & LLM Router
+>>>>>>> 54ed380d48805d46ef1601f694a2866aa4fd9089
 Integrated artificial intelligence for Frida script generation, closed-loop auto-correction, and game modification:
 - **Multi-Provider LLM Router (`AdaptiveLlmRouter`)**:
   - **Gemini Cloud**: Integrates Google Gemini 3.6 Flash and 3.5 Flash Lite via `GeminiApiService`.
@@ -69,7 +82,7 @@ Integrated artificial intelligence for Frida script generation, closed-loop auto
 
 ---
 
-### 🥷 Anti-Detection & Stealth Suite
+### Anti-Detection & Stealth Suite
 Engineered to bypass modern anti-cheat and detection mechanisms:
 - **Dynamic Binary Renaming**: Automatically renames Frida binaries (e.g., `frida-server` ➔ `nm-service` / randomized names) to evade process name checks (`pgrep`, `/proc/self/cmdline`).
 - **Stealth Pathing**: Operates out of hidden, root-protected system directories (`/data/adb/modules/snakeloader_frida`).
@@ -79,13 +92,13 @@ Engineered to bypass modern anti-cheat and detection mechanisms:
 
 ---
 
-### 🛠️ Dual-Engine Injection Architecture
+### Dual-Engine Injection Architecture
 - **Zygisk Loader**: Native C++ module (`zygisk/arm64-v8a.so`, `zygisk/armeabi-v7a.so`) that injects `frida-gadget.so` at process spawn before app `main()` execution.
 - **Frida Server / CLI**: Full support for standard Frida instrumentation with configurable binary execution strategies (`Auto`, `RPC (CLI)`, `Inject`, `Server`).
 
 ---
 
-### 🔍 Research & Debugging Arsenal
+### Research & Debugging Arsenal
 - **Memory Inspector**: Browse, dump (hex/ASCII), and write to process memory in real-time with RPC hook management.
 - **Code Flow Stalker**: Instruction-level execution tracing, call hierarchy segment trees, and hot-path frequency analysis.
 - **Interactive Root Shell**: Live `su` terminal console for executing commands directly on the device.
@@ -94,7 +107,7 @@ Engineered to bypass modern anti-cheat and detection mechanisms:
 
 ---
 
-### 📦 Ecosystem & Script Management
+### Ecosystem & Script Management
 - **GitHub & Frida CodeShare Browsers**: Search, preview, and download thousands of community scripts.
 - **ReShift Modules Asset Gallery**: Pre-bundled local asset script repository (`ReShiftModules`).
 - **Multi-Script Loader**: Concatenate and manage multiple active scripts per app with priority execution.
@@ -102,7 +115,7 @@ Engineered to bypass modern anti-cheat and detection mechanisms:
 
 ---
 
-## 🏗️ Project Architecture
+## Project Architecture
 
 ```
 ReShift/
@@ -125,6 +138,7 @@ ReShift/
 
 ---
 
+<<<<<<< HEAD
 ## 📜 Changelog
 
 ### [1.2.0] - Universal UE4/UE5 Dumper, KernelSU Next & Performance Overhaul
@@ -167,12 +181,15 @@ ReShift/
 - **Enhanced GGUF Restoration Path Search**:
   - Upgraded `restoreGgufModelsFromDownloads` in `SettingsViewModel.kt` to dynamically resolve `/Download` and `/Downloads` directories using official `Environment` APIs.
   - Resolved Android Lint warning regarding hardcoded `/sdcard/` paths.
+=======
+## Changelog
+>>>>>>> 54ed380d48805d46ef1601f694a2866aa4fd9089
 
 ---
 
 ### [1.1.0] - Design System & Feature Overhaul
 
-#### 🎨 Unified Design System & UI/UX Redesign
+#### Unified Design System & UI/UX Redesign
 - **Design System Tokens (`ui/theme/` & `ui/components/CommonUI.kt`)**:
   - **Standardized Shape Tokens**: Established `ReShiftCardShape` (`16.dp`), `ReShiftDialogShape` (`20.dp`), `ReShiftButtonShape` (`12.dp`), `ReShiftChipShape` (`8.dp`), and `ReShiftBadgeShape` (`6.dp`).
   - **Semantic Color Tokens**: Added unified status colors in `Color.kt` (`SuccessGreen`, `ErrorRed`, `WarningOrange`, `InfoBlue`, `PurpleAccent`, `CyanAccent`).
@@ -186,7 +203,7 @@ ReShift/
   - Refactored all 17 screens and sub-screens (`StatusScreen`, `AppsScreen`, `ModulesScreen`, `LogsScreen`, `SettingsScreen`, `FridaToolboxScreen`, `Il2CppScreen`, `MemoryInspectorScreen`, `ZygiskSettingsScreen`, `StalkerToolboxScreen`, `AdvancedFridaScreen`, `AppDetailsScreen`, `ModuleDetailsScreen`, `ScriptEditorScreen`, `RepoBrowserScreen`, `CodeShareBrowserScreen`, `AssetBrowserScreen`).
   - Standardized all application dialogs (`AppUpdateDialog`, `CommunityDialog`, `AppPickerDialog`, `MemoryDumpDialog`, `MemoryWriteDialog`, etc.).
 
-#### 🎮 IL2CPP Inspector (Unity Game Reverse Engineering)
+#### IL2CPP Inspector (Unity Game Reverse Engineering)
 - **Metadata Dumping & SQLite Caching**:
   - Native dump extraction from `libil2cpp.so` and `global-metadata.dat`.
   - Automatic persistent SQLite caching in `il2cpp_dumper.db` for instant reloads and offline analysis.
@@ -216,7 +233,7 @@ ReShift/
 - **Export Capabilities**:
   - Export full metadata dumps as structured JSON or C# Header files (`.cs`).
 
-#### 🤖 ReShift Autonomous AI Agent & LLM Engine
+#### ReShift Autonomous AI Agent & LLM Engine
 - **Multi-Provider LLM Support**:
   - **Gemini Cloud**: Integrates Gemini 3.6 Flash and 3.5 Flash Lite via Google Gemini API.
   - **Ollama Server**: Connects to local/network Ollama instances (`http://127.0.0.1:11434` or PC IP).
@@ -242,10 +259,24 @@ ReShift/
     - Execution mode selection (`Auto`, `Spawn (-f)`, `Attach (-n)`).
     - Adjustable injection delay slider (0 to 60 seconds).
     - Optional Cloud Static Analysis Validation.
+    - Upgraded `restoreGgufModelsFromDownloads` in `SettingsViewModel.kt` to dynamically resolve `/Download` and `/Downloads` directories using official `Environment` APIs.
+    - Resolved Android Lint warning regarding hardcoded `/sdcard/` paths.
+ 
+    - #### Frida Engine & Binaries Upgrade
+- **Frida v17.18.0 Upgrade**:
+  - Updated bundled Magisk/KernelSU/APatch module binaries (`frida-server`, `frida-inject`, `frida-gadget.so`) from 17.16.4 to **17.18.0**.
+  - Synchronized embedded app assets (`app/src/main/assets/ReShift.zip`) to bundle Frida 17.18.0 natively for direct in-app module installations.
+  - Updated `module.prop` and version metadata.
+
+#### Launcher & Manifest Fixes
+- **Duplicate App Icon Fix**:
+  - Resolved double launcher icon issue when running `./gradlew installRelease`.
+  - Removed duplicate `LAUNCHER` intent filter from `MainActivity` in `AndroidManifest.xml`.
+  - Unified app launcher management exclusively through `.LauncherDefault` and `.LauncherMasked` activity aliases for stealth icon masking.
 
 ---
 
-## 🚦 Getting Started
+## Getting Started
 
 1. **Prerequisites**: A rooted Android device running Magisk, KernelSU, or APatch.
 2. **Flash the ReShift Module**: Flash the `ReShift.zip` module via Magisk / KSU / APatch Manager.

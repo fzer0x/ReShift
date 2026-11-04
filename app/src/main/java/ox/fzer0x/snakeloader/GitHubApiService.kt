@@ -16,6 +16,7 @@ import ox.fzer0x.snakeloader.utils.ShellExecutor
 import ox.fzer0x.snakeloader.utils.InputValidator
 import ox.fzer0x.snakeloader.security.CertificatePinner
 import java.net.URI
+import java.net.URLDecoder
 
 class GitHubApiService(private val context: Context) {
     companion object {
@@ -488,6 +489,21 @@ class GitHubApiService(private val context: Context) {
 
     suspend fun downloadScriptContent(downloadUrl: String): String? {
         return withContext(Dispatchers.IO) {
+            val assetRelativePath = when {
+                downloadUrl.startsWith("asset://") -> downloadUrl.removePrefix("asset://")
+                downloadUrl.contains("ReShiftModules/") -> downloadUrl.substringAfter("ReShiftModules/").removePrefix("/")
+                else -> null
+            }
+
+            if (downloadUrl.startsWith("asset://") && assetRelativePath != null) {
+                val decodedPath = try { URLDecoder.decode(assetRelativePath, "UTF-8") } catch (_: Exception) { assetRelativePath }
+                try {
+                    return@withContext context.assets.open("ReShiftModules/$decodedPath").bufferedReader().use { it.readText() }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed reading direct asset $decodedPath: ${e.message}")
+                }
+            }
+
             val safeUrl = encodeUrlIfNeeded(downloadUrl)
             try {
                 val url = URL(safeUrl)
@@ -507,11 +523,27 @@ class GitHubApiService(private val context: Context) {
                     return@withContext connection.inputStream.bufferedReader().use { it.readText() }
                 }
                 
-                executeRootCurl(safeUrl)
+                Log.w(TAG, "HTTP download returned ${connection.responseCode} for $safeUrl, trying fallback...")
             } catch (e: Exception) {
-                Log.e(TAG, "Download failed, trying root fallback...")
-                executeRootCurl(safeUrl)
+                Log.e(TAG, "Download failed for $safeUrl: ${e.message}, trying fallback...")
             }
+
+            // Fallback 1: Local APK asset fallback for ReShiftModules
+            if (assetRelativePath != null) {
+                val decodedPath = try { URLDecoder.decode(assetRelativePath, "UTF-8") } catch (_: Exception) { assetRelativePath }
+                try {
+                    val localContent = context.assets.open("ReShiftModules/$decodedPath").bufferedReader().use { it.readText() }
+                    if (localContent.isNotBlank()) {
+                        Log.i(TAG, "Loaded module from local asset fallback: ReShiftModules/$decodedPath")
+                        return@withContext localContent
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Asset fallback failed for ReShiftModules/$decodedPath: ${e.message}")
+                }
+            }
+
+            // Fallback 2: Root shell curl execution
+            executeRootCurl(safeUrl)
         }
     }
 
@@ -583,15 +615,52 @@ class GitHubApiService(private val context: Context) {
             try {
                 val list = fetchReShiftModulesContentsFallback("app/src/main/assets/ReShiftModules")
                 if (list.isNotEmpty()) {
-                    Result.success(list.sortedWith(compareBy({ it.folder }, { it.fileName })))
-                } else {
-                    Result.failure(Exception("No modules found at $targetPrefix"))
+                    return@withContext Result.success(list.sortedWith(compareBy({ it.folder }, { it.fileName })))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to fetch ReShift modules via contents fallback", e)
-                Result.failure(e)
+            }
+
+            // Fallback: Scan local APK assets if GitHub API fails or is offline
+            val localModules = fetchLocalReShiftModules()
+            if (localModules.isNotEmpty()) {
+                Log.i(TAG, "Loaded ${localModules.size} local asset modules fallback")
+                Result.success(localModules.sortedWith(compareBy({ it.folder }, { it.fileName })))
+            } else {
+                Result.failure(Exception("No modules found at $targetPrefix"))
             }
         }
+    }
+
+    private fun fetchLocalReShiftModules(assetPath: String = "ReShiftModules"): List<ReShiftModuleFile> {
+        val list = mutableListOf<ReShiftModuleFile>()
+        try {
+            val files = context.assets.list(assetPath) ?: return emptyList()
+            val targetPrefix = "ReShiftModules/"
+            for (name in files) {
+                val fullPath = "$assetPath/$name"
+                val subFiles = context.assets.list(fullPath)
+                if (!subFiles.isNullOrEmpty()) {
+                    list.addAll(fetchLocalReShiftModules(fullPath))
+                } else if (name.endsWith(".js")) {
+                    val relativePath = if (fullPath.startsWith(targetPrefix)) fullPath.removePrefix(targetPrefix) else fullPath
+                    val folder = if (relativePath.contains("/")) relativePath.substringBeforeLast("/") else ""
+                    val localUrl = "asset://$relativePath"
+                    list.add(
+                        ReShiftModuleFile(
+                            fileName = name,
+                            path = relativePath,
+                            downloadUrl = localUrl,
+                            size = 0L,
+                            folder = folder
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed scanning local assets at $assetPath", e)
+        }
+        return list
     }
 
     private suspend fun fetchReShiftModulesContentsFallback(path: String): List<ReShiftModuleFile> {

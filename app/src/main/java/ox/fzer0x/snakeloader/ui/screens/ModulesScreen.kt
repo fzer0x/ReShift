@@ -420,7 +420,7 @@ fun installApkFromAssets(context: Context, apkPath: String) {
             cleanPath,
             "assets/$cleanPath",
             "ReShiftModules/$cleanPath",
-            "ReShiftModules/MOD - GAME/$cleanPath",
+            "ReShiftModules/GAMES/$cleanPath",
             fileName
         )
 

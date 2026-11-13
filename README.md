@@ -10,7 +10,6 @@
 
 ## Key Features & Capabilities
 
-<<<<<<< HEAD
 ### 🎮 Universal UE4 / UE5 Dumper & Unity IL2CPP Inspector
 Deep reverse engineering and in-memory metadata dumping for Unity IL2CPP and Unreal Engine 4/5 mobile games:
 - **Dual Dumper Engine (`DumperEngine`)**: Switch seamlessly between Unity IL2CPP (`il2cpp_inspector_dumper.js`) and Unreal Engine 4/5 (`assets/UE4_DUMP.js`).
@@ -27,7 +26,6 @@ Deep reverse engineering suite for Unity Android games utilizing the IL2CPP scri
 - **SQLite Database Engine (`il2cpp_dumper.db`)**: Persistent local SQLite caching of all parsed C# metadata for instant offline reloads and rapid search.
 - **Dashboard Overview Metrics Banner**: Real-time display of total parsed C# classes, active target application, and database engine status.
 - **Unified Control Center**: Target app selection, icon previews, and a configurable Frida injection delay slider (0 to 30 seconds) with quick preset chips (`0s`, `3s`, `5s`, `7s`, `10s`, `15s`, `20s`).
->>>>>>> 54ed380d48805d46ef1601f694a2866aa4fd9089
 - **Search & Filtering Toolbar**: Real-time filtering across class names, namespaces, methods, fields, and RVA offsets.
   - Filter by type: `All`, `Classes`, `Structs`, `Interfaces`, `Enums`.
   - **Prune DB**: One-click database cleaning to strip compiler-generated internal noise and anonymized classes.
@@ -41,7 +39,6 @@ Deep reverse engineering suite for Unity Android games utilizing the IL2CPP scri
 
 ---
 
-<<<<<<< HEAD
 ### 🔍 Pure Kotlin DEX & ELF Inspector Engine
 Integrated static binary decompiler, native shared library symbol analyzer, and disassembly engine:
 - **Pure Kotlin DEX Parser (`DexParser.kt`)**: Zero-dependency parser for Android Dalvik Executable (`.dex`) files & multi-DEX APKs (`classes.dex`, `classes2.dex`, etc.). Extracts Class Descriptors, Superclasses, Method signatures, Access flags, Fields, String/Type/Proto pools, and Cross-References (XREFs).
@@ -62,7 +59,6 @@ System-wide and per-application hardware identity mask engine utilizing Xposed/L
 ### 🤖 ReShift Autonomous AI Agent & LLM Router
 =======
 ### ReShift Autonomous AI Agent & LLM Router
->>>>>>> 54ed380d48805d46ef1601f694a2866aa4fd9089
 Integrated artificial intelligence for Frida script generation, closed-loop auto-correction, and game modification:
 - **Multi-Provider LLM Router (`AdaptiveLlmRouter`)**:
   - **Gemini Cloud**: Integrates Google Gemini 3.6 Flash and 3.5 Flash Lite via `GeminiApiService`.

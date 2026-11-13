@@ -697,12 +697,12 @@ fun ModuleListItem(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Android,
-                                contentDescription = "Install APK",
+                                contentDescription = "Install Mod Menu",
                                 tint = Color(0xFF3DDC84),
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = "Install APK",
+                                text = "Install Mod Menu",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontSize = 10.sp,
                                 color = Color(0xFF3DDC84),

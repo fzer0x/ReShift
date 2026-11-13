@@ -42,15 +42,25 @@ class ScriptManager(private val context: Context) {
         _scripts.forEachIndexed { index, script ->
             var updatedContent = script.content
             if (script.id.startsWith("reshift/") || script.repository == "ReShift Modules" || script.path.isNotBlank()) {
-                val assetPath = if (script.path.isNotBlank()) script.path else script.id.removePrefix("reshift/")
-                try {
-                    val latestAssetContent = context.assets.open("ReShiftModules/$assetPath").bufferedReader().use { it.readText() }
-                    if (latestAssetContent.isNotBlank() && latestAssetContent != script.content) {
-                        updatedContent = latestAssetContent
-                        modified = true
-                        Log.i(TAG, "Syncing updated asset module to cache: ReShiftModules/$assetPath")
-                    }
-                } catch (_: Exception) {}
+                val origPath = if (script.path.isNotBlank()) script.path else script.id.removePrefix("reshift/")
+                val cleanPath = origPath.replace("MOD - GAME/", "GAMES/")
+                val candidates = listOf(
+                    cleanPath,
+                    origPath,
+                    "GAMES/" + cleanPath.substringAfterLast("/"),
+                    "DEVELOPMENT/" + cleanPath.substringAfterLast("/")
+                )
+                for (cand in candidates) {
+                    try {
+                        val latestAssetContent = context.assets.open("ReShiftModules/$cand").bufferedReader().use { it.readText() }
+                        if (latestAssetContent.isNotBlank() && latestAssetContent != script.content) {
+                            updatedContent = latestAssetContent
+                            modified = true
+                            Log.i(TAG, "Syncing updated asset module to cache: ReShiftModules/$cand")
+                            break
+                        }
+                    } catch (_: Exception) {}
+                }
             }
 
             val result = extractMetadata(updatedContent)
@@ -214,8 +224,25 @@ class ScriptManager(private val context: Context) {
 
     fun importScriptFromAsset(fileName: String) {
         try {
-            val content = context.assets.open("ReShiftModules/$fileName").bufferedReader().use { it.readText() }
-            importScriptFromReShift(fileName, content)
+            val cleanPath = fileName.replace("MOD - GAME/", "GAMES/")
+            val candidates = listOf(
+                cleanPath,
+                fileName,
+                "GAMES/" + cleanPath.substringAfterLast("/"),
+                "DEVELOPMENT/" + cleanPath.substringAfterLast("/")
+            )
+            var content: String? = null
+            var finalPath = cleanPath
+            for (cand in candidates) {
+                try {
+                    content = context.assets.open("ReShiftModules/$cand").bufferedReader().use { it.readText() }
+                    finalPath = cand
+                    break
+                } catch (_: Exception) {}
+            }
+            if (content != null) {
+                importScriptFromReShift(finalPath, content)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to import script from ReShiftModules", e)
         }
@@ -223,17 +250,18 @@ class ScriptManager(private val context: Context) {
 
     fun importScriptFromReShift(relativePath: String, content: String) {
         try {
+            val cleanPath = relativePath.replace("MOD - GAME/", "GAMES/")
             val result = extractMetadata(content)
             val extractedName = result["name"] as? String
             val metadata = result["metadata"] as ModuleMetadata
             val description = (result["description"] as? String) ?: "Module from ReShift GitHub repository"
 
             val script = DownloadedScript(
-                id = "reshift/$relativePath",
-                name = extractedName ?: relativePath.substringAfterLast("/").removeSuffix(".js"),
+                id = "reshift/$cleanPath",
+                name = extractedName ?: cleanPath.substringAfterLast("/").removeSuffix(".js"),
                 content = content,
                 repository = "ReShift Modules",
-                path = relativePath,
+                path = cleanPath,
                 description = description
             )
             addScript(script)

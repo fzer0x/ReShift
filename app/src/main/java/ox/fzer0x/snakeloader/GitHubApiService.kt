@@ -497,14 +497,23 @@ class GitHubApiService(private val context: Context) {
 
             if (assetRelativePath != null) {
                 val decodedPath = try { URLDecoder.decode(assetRelativePath, "UTF-8") } catch (_: Exception) { assetRelativePath }
-                try {
-                    val localContent = context.assets.open("ReShiftModules/$decodedPath").bufferedReader().use { it.readText() }
-                    if (localContent.isNotBlank()) {
-                        Log.i(TAG, "Loaded module from local APK asset: ReShiftModules/$decodedPath")
-                        return@withContext localContent
+                val cleanPath = decodedPath.replace("MOD - GAME/", "GAMES/")
+                val candidates = listOf(
+                    cleanPath,
+                    decodedPath,
+                    "GAMES/" + cleanPath.substringAfterLast("/"),
+                    "DEVELOPMENT/" + cleanPath.substringAfterLast("/")
+                )
+                for (cand in candidates) {
+                    try {
+                        val localContent = context.assets.open("ReShiftModules/$cand").bufferedReader().use { it.readText() }
+                        if (localContent.isNotBlank()) {
+                            Log.i(TAG, "Loaded module from local APK asset: ReShiftModules/$cand")
+                            return@withContext localContent
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed reading asset $cand: ${e.message}")
                     }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed reading asset $decodedPath: ${e.message}")
                 }
             }
 
@@ -535,14 +544,23 @@ class GitHubApiService(private val context: Context) {
             // Fallback 1: Local APK asset fallback for ReShiftModules
             if (assetRelativePath != null) {
                 val decodedPath = try { URLDecoder.decode(assetRelativePath, "UTF-8") } catch (_: Exception) { assetRelativePath }
-                try {
-                    val localContent = context.assets.open("ReShiftModules/$decodedPath").bufferedReader().use { it.readText() }
-                    if (localContent.isNotBlank()) {
-                        Log.i(TAG, "Loaded module from local asset fallback: ReShiftModules/$decodedPath")
-                        return@withContext localContent
+                val cleanPath = decodedPath.replace("MOD - GAME/", "GAMES/")
+                val candidates = listOf(
+                    cleanPath,
+                    decodedPath,
+                    "GAMES/" + cleanPath.substringAfterLast("/"),
+                    "DEVELOPMENT/" + cleanPath.substringAfterLast("/")
+                )
+                for (cand in candidates) {
+                    try {
+                        val localContent = context.assets.open("ReShiftModules/$cand").bufferedReader().use { it.readText() }
+                        if (localContent.isNotBlank()) {
+                            Log.i(TAG, "Loaded module from local asset fallback: ReShiftModules/$cand")
+                            return@withContext localContent
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Asset fallback failed for ReShiftModules/$cand: ${e.message}")
                     }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Asset fallback failed for ReShiftModules/$decodedPath: ${e.message}")
                 }
             }
 

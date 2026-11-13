@@ -55,12 +55,12 @@ fi
 for BIN in frida-server frida-inject frida; do
     if [ -f "/data/adb/reshift/$BIN" ]; then
         chmod 755 "/data/adb/reshift/$BIN"
-        chcon u:object_r:system_file:s0 "/data/adb/reshift/$BIN" 2>/dev/null || true
+        restorecon "/data/adb/reshift/$BIN" 2>/dev/null || true
         if [ ! -f "/data/local/tmp/$BIN" ] || [ "/data/adb/reshift/$BIN" -nt "/data/local/tmp/$BIN" ]; then
             cp -f "/data/adb/reshift/$BIN" "/data/local/tmp/$BIN"
             chmod 755 "/data/local/tmp/$BIN"
             chown root:shell "/data/local/tmp/$BIN" 2>/dev/null || chown 0:2000 "/data/local/tmp/$BIN" 2>/dev/null
-            chcon u:object_r:system_file:s0 "/data/local/tmp/$BIN" 2>/dev/null || true
+            restorecon "/data/local/tmp/$BIN" 2>/dev/null || true
             log_info "Synced $BIN from /data/adb/reshift/ to /data/local/tmp/$BIN"
         fi
     elif [ -f "$MODDIR/$BIN" ]; then
@@ -68,7 +68,7 @@ for BIN in frida-server frida-inject frida; do
             cp -f "$MODDIR/$BIN" "/data/local/tmp/$BIN"
             chmod 755 "/data/local/tmp/$BIN"
             chown root:shell "/data/local/tmp/$BIN" 2>/dev/null || chown 0:2000 "/data/local/tmp/$BIN" 2>/dev/null
-            chcon u:object_r:system_file:s0 "/data/local/tmp/$BIN" 2>/dev/null || true
+            restorecon "/data/local/tmp/$BIN" 2>/dev/null || true
             log_info "Synced $BIN from module to /data/local/tmp/$BIN"
         fi
     fi
@@ -78,7 +78,7 @@ done
 if [ ! -f "/data/adb/reshift/frida" ] && [ -f "/data/adb/reshift/frida-inject" ]; then
     cp -f "/data/adb/reshift/frida-inject" "/data/adb/reshift/frida"
     chmod 755 "/data/adb/reshift/frida"
-    chcon u:object_r:system_file:s0 "/data/adb/reshift/frida" 2>/dev/null || true
+    restorecon "/data/adb/reshift/frida" 2>/dev/null || true
     log_info "Created CLI alias /data/adb/reshift/frida from frida-inject"
 fi
 
@@ -88,7 +88,7 @@ check_binary() {
     if [ -f "$path" ]; then
         chmod 755 "$path"
         chown root:shell "$path" 2>/dev/null || chown 0:2000 "$path" 2>/dev/null
-        chcon u:object_r:system_file:s0 "$path" 2>/dev/null || true
+        restorecon "$path" 2>/dev/null || true
         log_info "$name verified at $path"
         return 0
     fi

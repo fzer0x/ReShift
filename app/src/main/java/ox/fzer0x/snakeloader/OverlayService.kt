@@ -22,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
@@ -50,20 +51,24 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     private var logcatComposeView: ComposeView? = null
     private var fridaComposeView: ComposeView? = null
     private var agentComposeView: ComposeView? = null
+    private var trainerComposeView: ComposeView? = null
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
 
     private val textSize = mutableStateOf(10f)
     private val opacity = mutableStateOf(0.8f)
+    private val renderingColor = mutableStateOf(Color(0xFF00F0FF))
     private val isScriptMinimized = mutableStateOf(false)
     private val isLogcatMinimized = mutableStateOf(false)
     private val isFridaMinimized = mutableStateOf(false)
+    private val isTrainerMinimized = mutableStateOf(false)
 
     companion object {
         const val TYPE_SCRIPT = 0
         const val TYPE_LOGCAT = 1
         const val TYPE_FRIDA = 2
         const val TYPE_AGENT = 3
+        const val TYPE_TRAINER = 4
     }
 
     private fun createLayoutParams(x: Int, y: Int) = WindowManager.LayoutParams(
@@ -84,6 +89,7 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     private var scriptOverlayParams = createLayoutParams(50, 100)
     private var logcatOverlayParams = createLayoutParams(50, 450)
     private var fridaOverlayParams = createLayoutParams(50, 800)
+    private var trainerOverlayParams = createLayoutParams(50, 200)
     private var agentOverlayParams = WindowManager.LayoutParams(
         WindowManager.LayoutParams.MATCH_PARENT,
         WindowManager.LayoutParams.WRAP_CONTENT,
@@ -122,6 +128,7 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         val settings = SettingsManager(this)
         textSize.value = settings.overlayTextSize * 0.8f
         opacity.value = settings.overlayOpacity
+        renderingColor.value = Color(settings.overlayColor)
         
         if (settings.isOverlayEnabled) {
             if (scriptComposeView == null) {
@@ -161,6 +168,19 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
         } else {
             try {
                 windowManager.updateViewLayout(agentComposeView, agentOverlayParams)
+            } catch (e: Exception) {}
+        }
+
+        if (trainerComposeView == null) {
+            trainerComposeView = createTrainerOverlayView()
+            try {
+                windowManager.addView(trainerComposeView, trainerOverlayParams)
+            } catch (e: Exception) {
+                Log.e("OverlayService", "Error adding trainerComposeView: ${e.message}", e)
+            }
+        } else {
+            try {
+                windowManager.updateViewLayout(trainerComposeView, trainerOverlayParams)
             } catch (e: Exception) {}
         }
         
@@ -635,6 +655,118 @@ class OverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun createTrainerOverlayView(): ComposeView {
+        return ComposeView(this).apply {
+            val viewModelStore = ViewModelStore()
+            val lifecycleOwner = this@OverlayService
+
+            setViewTreeLifecycleOwner(lifecycleOwner)
+            setViewTreeViewModelStoreOwner(object : ViewModelStoreOwner {
+                override val viewModelStore: ViewModelStore = viewModelStore
+            })
+            setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+
+            setContent {
+                val controller = remember {
+                    try {
+                        org.koin.java.KoinJavaComponent.getKoin().get<ox.fzer0x.snakeloader.ui.TrainerOverlayController>()
+                    } catch (e: Exception) { null }
+                }
+
+                val patches by controller?.patches?.collectAsState() ?: remember { mutableStateOf(emptyList()) }
+                val currentOpacity by opacity
+                val isMinimized by isTrainerMinimized
+
+                var width by remember { mutableStateOf(300.dp) }
+                var height by remember { mutableStateOf(220.dp) }
+
+                Surface(
+                    color = Color.Black.copy(alpha = currentOpacity * 0.85f),
+                    shape = RoundedCornerShape(12.dp),
+                    tonalElevation = 8.dp,
+                    shadowElevation = 4.dp,
+                    modifier = Modifier
+                        .sizeIn(minWidth = 50.dp, minHeight = 40.dp)
+                        .then(if (isMinimized) Modifier.wrapContentSize() else Modifier.size(width, height))
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                trainerOverlayParams.x += dragAmount.x.toInt()
+                                trainerOverlayParams.y += dragAmount.y.toInt()
+                                try {
+                                    windowManager.updateViewLayout(this@apply, trainerOverlayParams)
+                                } catch (e: Exception) {}
+                            }
+                        }
+                ) {
+                    if (isMinimized) {
+                        IconButton(onClick = { isTrainerMinimized.value = false }, modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.Default.SportsEsports, "Expand Trainer", tint = Color(0xFF81C784))
+                        }
+                    } else {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.SportsEsports, null, tint = Color(0xFF81C784), modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("ReShift Trainer", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { controller?.restoreAllVerified() }, modifier = Modifier.size(24.dp)) {
+                                        Icon(Icons.Default.Restore, "Restore All", tint = Color.LightGray, modifier = Modifier.size(16.dp))
+                                    }
+                                    IconButton(onClick = { isTrainerMinimized.value = true }, modifier = Modifier.size(24.dp)) {
+                                        Icon(Icons.Default.Remove, "Minimize", tint = Color.LightGray, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+
+                            HorizontalDivider(color = Color.White.copy(alpha = 0.12f), thickness = 0.5.dp)
+
+                            if (patches.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("No active patches", fontSize = 11.sp, color = Color.Gray)
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize().padding(top = 4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    items(patches) { patch ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(6.dp))
+                                                .padding(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(patch.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                                                Text("${patch.moduleName}+${patch.rvaOffsetHex}", fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = Color.Gray)
+                                            }
+
+                                            Switch(
+                                                checked = patch.status == ox.fzer0x.snakeloader.data.PatchStatus.ACTIVE,
+                                                onCheckedChange = { controller?.togglePatch(patch.id) },
+                                                modifier = Modifier.scale(0.6f)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

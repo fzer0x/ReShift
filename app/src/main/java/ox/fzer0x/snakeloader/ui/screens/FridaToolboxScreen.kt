@@ -95,6 +95,7 @@ fun FridaToolboxScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             ReShiftTopAppBar(
@@ -364,6 +365,24 @@ fun FridaToolboxScreen(
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         GridActionCard(
+                            title = "Memory Inspector",
+                            subtitle = "AOB Scanner & Code Patcher",
+                            icon = Icons.Default.Memory,
+                            color = MaterialTheme.colorScheme.secondary,
+                            onClick = { onNavigateToMemoryInspector?.invoke() },
+                            modifier = Modifier.weight(1f)
+                        )
+                        GridActionCard(
+                            title = "Code Flow Stalker",
+                            subtitle = "Instruction Execution Tracer",
+                            icon = Icons.Default.Timeline,
+                            color = SuccessGreen,
+                            onClick = { onNavigateToStalker?.invoke() },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        GridActionCard(
                             title = "DEX & ELF Inspector",
                             subtitle = "Ghidra / Radare2 Decompiler",
                             icon = Icons.Default.Code,
@@ -424,8 +443,6 @@ fun FridaToolboxScreen(
                     PowerControlCard(fridaManager = fridaManager)
                 }
             }
-
-            item { Spacer(Modifier.height(32.dp)) }
         }
 
         // DIALOG: PROCESS MANAGER & MODULE INSPECTOR

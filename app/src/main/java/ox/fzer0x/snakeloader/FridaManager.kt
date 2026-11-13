@@ -397,6 +397,50 @@ class FridaManager(
 
     private fun sanitizeScriptForJavaReady(content: String): String {
         var processed = content
+
+        val moduleFindExportPolyfill = """
+(function() {
+    if (typeof Module !== 'undefined' && typeof Module.findExportByName !== 'function') {
+        Module.findExportByName = function(moduleName, exportName) {
+            if (typeof exportName === 'undefined') {
+                exportName = moduleName;
+                moduleName = null;
+            }
+            if (typeof Module.getExportByName === 'function') {
+                try {
+                    return Module.getExportByName(moduleName, exportName);
+                } catch (_) {}
+            }
+            if (moduleName) {
+                try {
+                    const mod = Process.findModuleByName(moduleName);
+                    if (mod) {
+                        if (typeof mod.findExportByName === 'function') {
+                            return mod.findExportByName(exportName);
+                        }
+                        if (typeof mod.getExportByName === 'function') {
+                            try { return mod.getExportByName(exportName); } catch (_) {}
+                        }
+                    }
+                } catch (_) {}
+            } else {
+                try {
+                    if (typeof Process.getExportByName === 'function') {
+                        return Process.getExportByName(exportName);
+                    }
+                } catch (_) {}
+                try {
+                    if (typeof Process.findExportByName === 'function') {
+                        return Process.findExportByName(exportName);
+                    }
+                } catch (_) {}
+            }
+            return null;
+        };
+    }
+})();
+""".trimIndent()
+
         val javaPerformOverride = """
 (function() {
     if (typeof Java !== 'undefined') {
@@ -421,6 +465,10 @@ class FridaManager(
     }
 })();
 """.trimIndent()
+
+        if (!processed.contains("Module.findExportByName =")) {
+            processed = "$moduleFindExportPolyfill\n$processed"
+        }
 
         if (!processed.contains("Java.__reshift_overridden")) {
             processed = "$javaPerformOverride\n$processed"

@@ -24,7 +24,9 @@ data class ModuleMetadata(
     val author: String? = null,
     val targetPackages: List<String> = emptyList(),
     val minSnakeVersion: Int? = null,
-    val noEdit: Boolean = false
+    val noEdit: Boolean = false,
+    val category: String? = null,
+    val apkPath: String? = null
 )
 
 data class DownloadedScript(
@@ -43,22 +45,18 @@ fun String.isGoodDescription(): Boolean {
     val clean = this.trim().removePrefix(":").trim()
     if (clean.isBlank() || clean.length < 5) return false
     
-    val badMarkers = listOf(
-        "Java.", "Interceptor.", "Memory.", "Process.", "Module.", "Thread.",
-        "function", "var ", "let ", "const ", "=>", "return", "if (", "for (", "while (",
-        "console.", "rpc.exports", "require(", "import ", "from '", "null", "undefined",
-        "{", "}", "(", ")", ";", "[", "]", "ptr(", "0x"
+    val codeKeywords = listOf(
+        "function ", "function(", "var ", "let ", "const ", "=>", "return ", "if (", "for (", "while (",
+        "console.log", "rpc.exports", "require(", "import ", "from '", "ptr(", "0x"
     )
     
-    if (badMarkers.any { clean.contains(it, ignoreCase = true) }) return false
+    if (codeKeywords.any { clean.contains(it, ignoreCase = true) }) return false
     
-    val symbolCount = clean.count { it in "{}[];()=><+-*/%&|^!" }
+    val symbolCount = clean.count { it in "{}=><+-*/%&|^!" }
     if (symbolCount > 10 || symbolCount > clean.length / 3) return false
     
     val badStarts = listOf("@", "Author:", "Version:", "Target:", "File:", "Name:")
     if (badStarts.any { clean.startsWith(it, ignoreCase = true) }) return false
-
-    if (clean.length < 5) return false
 
     return true
 }

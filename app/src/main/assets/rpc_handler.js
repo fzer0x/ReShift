@@ -85,6 +85,268 @@ if (!global.SCRIPT_REGISTRY) {
 }
 const SCRIPT_REGISTRY = global.SCRIPT_REGISTRY;
 
+// ============ RUNTIME PATCH ENGINE ============
+
+if (!global.GLOBAL_SESSION_ID) {
+    global.GLOBAL_SESSION_ID = 'session_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+}
+if (!global.PATCH_REGISTRY) {
+    global.PATCH_REGISTRY = {};
+}
+if (!global.ACTIVE_AOB_SCANS) {
+    global.ACTIVE_AOB_SCANS = {};
+}
+
+function bytesToHex(byteArray) {
+    if (!byteArray) return '';
+    const u8 = new Uint8Array(byteArray);
+    let hex = '';
+    for (let i = 0; i < u8.length; i++) {
+        const b = u8[i].toString(16);
+        hex += (b.length === 1 ? '0' + b : b);
+    }
+    return hex.toUpperCase();
+}
+
+function hexToBytes(hexStr) {
+    if (!hexStr) return [];
+    const cleanHex = hexStr.replace(/\s+/g, '');
+    const bytes = [];
+    for (let i = 0; i < cleanHex.length; i += 2) {
+        bytes.push(parseInt(cleanHex.substr(i, 2), 16));
+    }
+    return bytes;
+}
+
+function rangesOverlap(start1, size1, start2, size2) {
+    const end1 = start1.add(size1);
+    const end2 = start2.add(size2);
+    return start1.compare(end2) < 0 && start2.compare(end1) < 0;
+}
+
+EXPORTS.apply_patch_rva = function(moduleName, rvaHex, patchHex, patchId) {
+    try {
+        const mod = Process.findModuleByName(moduleName);
+        if (!mod) {
+            Logger.error(`apply_patch_rva failed: Module ${moduleName} not found`);
+            return { success: false, error: `Module ${moduleName} not found`, status: 'UNVERIFIED' };
+        }
+
+        const rvaPtr = ptr(rvaHex.startsWith('0x') || rvaHex.startsWith('0X') ? rvaHex : '0x' + rvaHex);
+        const runtimeAddr = mod.base.add(rvaPtr);
+        const addrKey = runtimeAddr.toString();
+        const patchBytes = hexToBytes(patchHex);
+        const size = patchBytes.length;
+
+        if (size === 0) {
+            return { success: false, error: "Empty patch hex string", status: 'ERROR' };
+        }
+
+        // Multi-range boundary validation
+        const rangeEnd = runtimeAddr.add(size);
+        const memRange = Process.findRangeByAddress(runtimeAddr);
+        if (!memRange || memRange.base.add(memRange.size).compare(rangeEnd) < 0) {
+            Logger.error(`Patch range spans outside valid memory boundary at ${runtimeAddr}`);
+            return { success: false, error: "Patch range spans outside valid memory boundary", status: 'ERROR' };
+        }
+
+        // Overlapping patch conflict detection
+        for (const existingKey in global.PATCH_REGISTRY) {
+            const entry = global.PATCH_REGISTRY[existingKey];
+            if (entry && existingKey !== addrKey) {
+                const entryAddr = ptr(entry.runtimeAddress);
+                if (rangesOverlap(runtimeAddr, size, entryAddr, entry.currentPatchSize)) {
+                    Logger.error(`Patch conflict: Overlaps with existing patch ${entry.patchId} at ${entry.runtimeAddress}`);
+                    return { success: false, error: `Overlaps with existing patch ${entry.patchId}`, status: 'CONFLICT' };
+                }
+            }
+        }
+
+        const origProt = memRange.protection;
+
+        if (!global.PATCH_REGISTRY[addrKey]) {
+            const originalBytes = runtimeAddr.readByteArray(size);
+            global.PATCH_REGISTRY[addrKey] = {
+                patchId: patchId || ('patch_' + Date.now()),
+                processId: Process.id,
+                processStartIdentity: global.GLOBAL_SESSION_ID,
+                moduleName: moduleName,
+                moduleBase: mod.base.toString(),
+                moduleSize: mod.size,
+                rva: rvaHex,
+                runtimeAddress: addrKey,
+                originalBytesHex: bytesToHex(originalBytes),
+                originalSize: size,
+                currentPatchSize: size,
+                lastVerifiedBytesHex: patchHex.toUpperCase(),
+                status: 'PENDING',
+                patchHistory: []
+            };
+        }
+
+        try {
+            Memory.protect(runtimeAddr, size, 'rwx');
+            runtimeAddr.writeByteArray(patchBytes);
+            Memory.flushInstructionCache(runtimeAddr, size);
+
+            // Post-write verification
+            const verifiedBytes = runtimeAddr.readByteArray(size);
+            const verifiedHex = bytesToHex(verifiedBytes);
+            if (verifiedHex.toLowerCase() !== patchHex.replace(/\s+/g, '').toLowerCase()) {
+                throw new Error(`Post-write verification failed. Expected ${patchHex}, got ${verifiedHex}`);
+            }
+
+            const reg = global.PATCH_REGISTRY[addrKey];
+            reg.currentPatchSize = size;
+            reg.lastVerifiedBytesHex = verifiedHex;
+            reg.status = 'ACTIVE';
+            reg.patchHistory.push({ patchId: reg.patchId, patchHex: patchHex, timestamp: Date.now() });
+
+            Logger.success(`Patch ${reg.patchId} applied at ${moduleName}+${rvaHex} (${addrKey})`);
+            return {
+                success: true,
+                patchId: reg.patchId,
+                status: 'ACTIVE',
+                verifiedBytesHex: verifiedHex,
+                originalBytesHex: reg.originalBytesHex,
+                runtimeAddress: addrKey
+            };
+        } catch (writeErr) {
+            Logger.error(`Patch transaction failed for ${addrKey}: ${writeErr.message}. Triggering rollback...`);
+            const reg = global.PATCH_REGISTRY[addrKey];
+            if (reg && reg.originalBytesHex) {
+                try {
+                    const origBytes = hexToBytes(reg.originalBytesHex);
+                    runtimeAddr.writeByteArray(origBytes);
+                    Memory.flushInstructionCache(runtimeAddr, reg.originalSize);
+                    Logger.warn(`Rollback succeeded for ${addrKey}`);
+                } catch (rbErr) {
+                    Logger.error(`Rollback failed for ${addrKey}: ${rbErr.message}`);
+                }
+            }
+            if (reg) reg.status = 'ERROR';
+            return { success: false, error: writeErr.message, status: 'ERROR' };
+        } finally {
+            try {
+                Memory.protect(runtimeAddr, size, origProt);
+            } catch (e) {}
+        }
+    } catch (e) {
+        Logger.error(`apply_patch_rva error: ${e.message}`);
+        return { success: false, error: e.message, status: 'ERROR' };
+    }
+};
+
+EXPORTS.replace_patch_rva = function(moduleName, rvaHex, newPatchHex, patchId) {
+    return EXPORTS.apply_patch_rva(moduleName, rvaHex, newPatchHex, patchId);
+};
+
+EXPORTS.restore_original_rva = function(moduleName, rvaHex) {
+    try {
+        const mod = Process.findModuleByName(moduleName);
+        if (!mod) {
+            return { success: false, error: `Module ${moduleName} not found`, status: 'UNVERIFIED' };
+        }
+
+        const rvaPtr = ptr(rvaHex.startsWith('0x') || rvaHex.startsWith('0X') ? rvaHex : '0x' + rvaHex);
+        const runtimeAddr = mod.base.add(rvaPtr);
+        const addrKey = runtimeAddr.toString();
+
+        const reg = global.PATCH_REGISTRY[addrKey];
+        if (!reg || !reg.originalBytesHex) {
+            Logger.warn(`No original backup found in registry for ${addrKey}`);
+            return { success: false, error: "No original backup found", status: 'UNVERIFIED' };
+        }
+
+        const origBytes = hexToBytes(reg.originalBytesHex);
+        const size = origBytes.length;
+
+        const memRange = Process.findRangeByAddress(runtimeAddr);
+        const origProt = memRange ? memRange.protection : 'r-x';
+
+        try {
+            Memory.protect(runtimeAddr, size, 'rwx');
+            runtimeAddr.writeByteArray(origBytes);
+            Memory.flushInstructionCache(runtimeAddr, size);
+
+            const verifiedBytes = bytesToHex(runtimeAddr.readByteArray(size));
+            if (verifiedBytes.toLowerCase() !== reg.originalBytesHex.toLowerCase()) {
+                throw new Error(`Restore verification failed. Expected ${reg.originalBytesHex}, got ${verifiedBytes}`);
+            }
+
+            reg.status = 'INACTIVE';
+            reg.lastVerifiedBytesHex = verifiedBytes;
+            Logger.success(`Restored original bytes at ${moduleName}+${rvaHex} (${addrKey})`);
+            return { success: true, status: 'INACTIVE', restoredBytesHex: verifiedBytes };
+        } catch (err) {
+            Logger.error(`Restore failed for ${addrKey}: ${err.message}`);
+            reg.status = 'ERROR';
+            return { success: false, error: err.message, status: 'ERROR' };
+        } finally {
+            try {
+                if (memRange) Memory.protect(runtimeAddr, size, origProt);
+            } catch (e) {}
+        }
+    } catch (e) {
+        Logger.error(`restore_original_rva error: ${e.message}`);
+        return { success: false, error: e.message, status: 'ERROR' };
+    }
+};
+
+EXPORTS.verify_patch_state = function(moduleName, rvaHex, expectedOrigHex, expectedPatchHex) {
+    try {
+        const mod = Process.findModuleByName(moduleName);
+        if (!mod) {
+            return { status: 'UNVERIFIED', error: `Module ${moduleName} not loaded` };
+        }
+
+        const rvaPtr = ptr(rvaHex.startsWith('0x') || rvaHex.startsWith('0X') ? rvaHex : '0x' + rvaHex);
+        const runtimeAddr = mod.base.add(rvaPtr);
+        const addrKey = runtimeAddr.toString();
+
+        const size = expectedPatchHex ? hexToBytes(expectedPatchHex).length : (expectedOrigHex ? hexToBytes(expectedOrigHex).length : 4);
+        const currentBytes = bytesToHex(runtimeAddr.readByteArray(size)).toUpperCase();
+
+        const cleanExpectedPatch = expectedPatchHex ? expectedPatchHex.replace(/\s+/g, '').toUpperCase() : null;
+        const cleanExpectedOrig = expectedOrigHex ? expectedOrigHex.replace(/\s+/g, '').toUpperCase() : null;
+
+        let status = 'UNVERIFIED';
+        if (cleanExpectedPatch && currentBytes === cleanExpectedPatch) {
+            status = 'ACTIVE';
+        } else if (cleanExpectedOrig && currentBytes === cleanExpectedOrig) {
+            status = 'INACTIVE';
+        } else {
+            status = 'CONFLICT';
+        }
+
+        if (global.PATCH_REGISTRY[addrKey]) {
+            global.PATCH_REGISTRY[addrKey].status = status;
+            global.PATCH_REGISTRY[addrKey].lastVerifiedBytesHex = currentBytes;
+        }
+
+        return {
+            status: status,
+            runtimeAddress: addrKey,
+            currentBytesHex: currentBytes,
+            expectedPatchHex: cleanExpectedPatch,
+            expectedOrigHex: cleanExpectedOrig
+        };
+    } catch (e) {
+        Logger.error(`verify_patch_state error: ${e.message}`);
+        return { status: 'ERROR', error: e.message };
+    }
+};
+
+EXPORTS.list_patch_registry = function() {
+    return {
+        processId: Process.id,
+        sessionId: global.GLOBAL_SESSION_ID,
+        count: Object.keys(global.PATCH_REGISTRY).length,
+        entries: global.PATCH_REGISTRY
+    };
+};
+
+
 // ============ RPC EXPORTS ============
 const EXPORTS = {};
 
@@ -255,6 +517,144 @@ EXPORTS.stopStalker = function() {
     }
     Logger.error('stopStalker not found in global scope.');
     return false;
+};
+
+// ============ ASYNCHRONOUS AOB SCANNER ENGINE ============
+
+EXPORTS.start_aob_scan = function(moduleName, patternHex, minFixedBytes = 2, maxResults = 100) {
+    const scanId = 'scan_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+    Logger.info(`Starting AOB scan ${scanId} for pattern: ${patternHex} in ${moduleName || 'all executable modules'}`);
+
+    if (!patternHex || patternHex.trim() === '') {
+        return { scanId: scanId, status: 'ERROR', error: 'Pattern is empty', results: [] };
+    }
+
+    const cleanPattern = patternHex.trim();
+    const tokens = cleanPattern.split(/\s+/);
+    let fixedByteCount = 0;
+    for (const token of tokens) {
+        if (token !== '?' && token !== '??') {
+            if (!/^[0-9a-fA-F]{2}$/.test(token)) {
+                return { scanId: scanId, status: 'ERROR', error: `Invalid byte token: ${token}`, results: [] };
+            }
+            fixedByteCount++;
+        }
+    }
+
+    if (fixedByteCount < minFixedBytes) {
+        return { scanId: scanId, status: 'ERROR', error: `Pattern requires at least ${minFixedBytes} non-wildcard byte(s)`, results: [] };
+    }
+
+    const scanState = {
+        scanId: scanId,
+        moduleName: moduleName,
+        pattern: cleanPattern,
+        status: 'RUNNING',
+        cancelRequested: false,
+        results: [],
+        error: null,
+        startTime: Date.now()
+    };
+    global.ACTIVE_AOB_SCANS[scanId] = scanState;
+
+    setTimeout(() => {
+        try {
+            let ranges = [];
+            if (moduleName) {
+                const mod = Process.findModuleByName(moduleName);
+                if (mod) {
+                    ranges = Process.enumerateRanges({ protection: 'r-x', coalesce: true })
+                        .filter(r => r.base.compare(mod.base) >= 0 && r.base.compare(mod.base.add(mod.size)) < 0);
+                    if (ranges.length === 0) {
+                        ranges = [{ base: mod.base, size: mod.size, protection: 'r-x' }];
+                    }
+                }
+            } else {
+                ranges = Process.enumerateRanges({ protection: 'r-x', coalesce: true });
+            }
+
+            let completedRanges = 0;
+            if (ranges.length === 0) {
+                scanState.status = 'COMPLETED';
+                return;
+            }
+
+            ranges.forEach(range => {
+                if (scanState.cancelRequested || scanState.results.length >= maxResults) return;
+
+                Memory.scan(range.base, range.size, cleanPattern, {
+                    onMatch: function(address, size) {
+                        if (scanState.cancelRequested) return 'stop';
+
+                        const mod = Process.findModuleByAddress(address);
+                        const modName = mod ? mod.name : (moduleName || 'unknown');
+                        const rvaOffsetHex = mod ? '0x' + address.sub(mod.base).toString(16) : '0x' + address.toString(16);
+
+                        let matchedBytesHex = '';
+                        try {
+                            matchedBytesHex = bytesToHex(address.readByteArray(size));
+                        } catch (e) {}
+
+                        scanState.results.push({
+                            addressHex: address.toString(),
+                            moduleName: modName,
+                            rvaOffsetHex: rvaOffsetHex,
+                            matchedBytesHex: matchedBytesHex,
+                            size: size
+                        });
+
+                        if (scanState.results.length >= maxResults) return 'stop';
+                    },
+                    onError: function(reason) {
+                        Logger.warn(`AOB scan range error: ${reason}`);
+                    },
+                    onComplete: function() {
+                        completedRanges++;
+                        if (completedRanges >= ranges.length || scanState.cancelRequested || scanState.results.length >= maxResults) {
+                            if (scanState.cancelRequested) {
+                                scanState.status = 'CANCELLED';
+                            } else {
+                                scanState.status = 'COMPLETED';
+                            }
+                            Logger.success(`AOB scan ${scanId} finished with ${scanState.results.length} matches (status: ${scanState.status})`);
+                        }
+                    }
+                });
+            });
+        } catch (e) {
+            Logger.error(`AOB scan ${scanId} failed: ${e.message}`);
+            scanState.status = 'ERROR';
+            scanState.error = e.message;
+        }
+    }, 10);
+
+    return { scanId: scanId, status: 'RUNNING', results: [] };
+};
+
+EXPORTS.cancel_aob_scan = function(scanId) {
+    const scanState = global.ACTIVE_AOB_SCANS[scanId];
+    if (scanState) {
+        scanState.cancelRequested = true;
+        scanState.status = 'CANCELLED';
+        Logger.info(`AOB scan cancellation requested for ${scanId}`);
+        return true;
+    }
+    return false;
+};
+
+EXPORTS.get_aob_scan_status = function(scanId) {
+    const scanState = global.ACTIVE_AOB_SCANS[scanId];
+    if (!scanState) {
+        return { scanId: scanId, status: 'NOT_FOUND', results: [] };
+    }
+    return {
+        scanId: scanId,
+        status: scanState.status,
+        pattern: scanState.pattern,
+        resultsCount: scanState.results.length,
+        results: scanState.results,
+        error: scanState.error
+    };
 };
 
 EXPORTS.scanMemory = function(pattern, moduleName, timeoutMs = SCAN_TIMEOUT_MS) {

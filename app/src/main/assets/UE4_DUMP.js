@@ -1551,7 +1551,7 @@ class UniversalUE4Dumper {
 // ============================================================================
 function findUE4Module() {
     const commonModules = [
-        "libUE4.so", "libUnreal.so", "libShadowTrackerExtra.so", 
+        "libUE4.so", "libUnreal.so", "libShadowTrackerExtra.so",
         "libgcloud.so", "libApex.so", "libanogs.so"
     ];
     for (let name of commonModules) {

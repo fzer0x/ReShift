@@ -108,6 +108,23 @@ class RpcBridge(private val context: Context) {
         }
     }
 
+    suspend fun startAobScan(moduleName: String?, patternHex: String, minFixedBytes: Int = 2, maxResults: Int = 100): RpcResponse {
+        val params = mutableListOf<Any>()
+        if (moduleName != null) params.add(moduleName) else params.add("")
+        params.add(patternHex)
+        params.add(minFixedBytes)
+        params.add(maxResults)
+        return callRpc("start_aob_scan", params)
+    }
+
+    suspend fun cancelAobScan(scanId: String): RpcResponse {
+        return callRpc("cancel_aob_scan", listOf(scanId))
+    }
+
+    suspend fun getAobScanStatus(scanId: String): RpcResponse {
+        return callRpc("get_aob_scan_status", listOf(scanId))
+    }
+
     suspend fun listHooks(): List<HookInfo> {
         return try {
             Log.d(TAG, "Attempting to list hooks...")

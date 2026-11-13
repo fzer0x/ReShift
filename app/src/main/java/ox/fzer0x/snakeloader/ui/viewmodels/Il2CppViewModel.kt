@@ -1306,7 +1306,8 @@ class Il2CppViewModel(
             // Parameters: ${if (method.params.isEmpty()) "None" else method.params.joinToString(", ")}
             // Relative Offset: ${method.offset} | Absolute Pointer: ${method.pointer}
 
-            const il2cppBase = Module.findBaseAddress("libil2cpp.so");
+            const il2cppMod = Process.findModuleByName("libil2cpp.so");
+            const il2cppBase = il2cppMod ? il2cppMod.base : null;
             if (!il2cppBase) {
                 console.log("[-] Error: libil2cpp.so not found in memory!");
             } else {
@@ -1347,7 +1348,8 @@ class Il2CppViewModel(
         val sb = StringBuilder()
         sb.append("// ReShift Frida Hook Suite for Class: ${klass.fullName}\n")
         sb.append("// Assembly: ${klass.assembly} | Total Methods: ${klass.methods.size} | Hookable Offsets: ${validMethods.size}\n\n")
-        sb.append("const il2cppBase = Module.findBaseAddress('libil2cpp.so');\n")
+        sb.append("const il2cppMod = Process.findModuleByName('libil2cpp.so');\n")
+        sb.append("const il2cppBase = il2cppMod ? il2cppMod.base : null;\n")
         sb.append("if (!il2cppBase) {\n")
         sb.append("    console.error('[-] libil2cpp.so not loaded in process!');\n")
         sb.append("} else {\n")

@@ -39,12 +39,12 @@ mkdir -p /data/adb/reshift/scripts
 mkdir -p /data/local/tmp
 chmod 755 /data/adb/reshift
 chmod 755 /data/adb/reshift/scripts
-chcon -R u:object_r:system_file:s0 /data/adb/reshift 2>/dev/null || true
+restorecon -R /data/adb/reshift 2>/dev/null || true
 
 if [ ! -f /data/adb/reshift/zygisk_config.json ]; then
     echo '{"enabled":false,"apps":[],"globalScriptId":null}' > /data/adb/reshift/zygisk_config.json
     chmod 644 /data/adb/reshift/zygisk_config.json
-    chcon u:object_r:system_file:s0 /data/adb/reshift/zygisk_config.json 2>/dev/null || true
+    restorecon /data/adb/reshift/zygisk_config.json 2>/dev/null || true
 fi
 
 install_binary() {
@@ -56,13 +56,13 @@ install_binary() {
         cp -f "$src" "$dest"
         chmod 755 "$dest"
         chown root:shell "$dest" 2>/dev/null || chown 0:2000 "$dest" 2>/dev/null
-        chcon u:object_r:system_file:s0 "$dest" 2>/dev/null || true
+        restorecon "$dest" 2>/dev/null || true
         ui_print "- $name installed successfully to $dest"
     elif [ -f "$dest" ]; then
         ui_print "- Existing $name found at $dest, updating permissions"
         chmod 755 "$dest"
         chown root:shell "$dest" 2>/dev/null || chown 0:2000 "$dest" 2>/dev/null
-        chcon u:object_r:system_file:s0 "$dest" 2>/dev/null || true
+        restorecon "$dest" 2>/dev/null || true
     else
         ui_print "- Notice: $name managed at runtime via ReShift Downloader Engine (/data/adb/reshift/)"
     fi
@@ -76,16 +76,14 @@ if [ ! -f "$FRIDA_CLI_TARGET" ] && [ -f "$FRIDA_INJECT_TARGET" ]; then
     ui_print "- Creating CLI alias at $FRIDA_CLI_TARGET..."
     cp -f "$FRIDA_INJECT_TARGET" "$FRIDA_CLI_TARGET"
     chmod 755 "$FRIDA_CLI_TARGET"
-    chcon u:object_r:system_file:s0 "$FRIDA_CLI_TARGET" 2>/dev/null || true
+    restorecon "$FRIDA_CLI_TARGET" 2>/dev/null || true
 fi
 
 if [ -f "$MODPATH/frida-gadget.so" ]; then
     ui_print "- Installing Frida Gadget to persistent storage..."
     cp -f "$MODPATH/frida-gadget.so" "/data/adb/reshift/frida-gadget.so"
     set_perm "/data/adb/reshift/frida-gadget.so" 0 0 0644
-    chcon u:object_r:system_file:s0 "/data/adb/reshift/frida-gadget.so" 2>/dev/null || true
+    restorecon "/data/adb/reshift/frida-gadget.so" 2>/dev/null || true
 fi
 
 ui_print "- ReShift Module installation completed successfully"
-
-

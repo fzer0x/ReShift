@@ -3,13 +3,20 @@ package ox.fzer0x.snakeloader.ui.viewmodels
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import ox.fzer0x.snakeloader.HookInfo
-import ox.fzer0x.snakeloader.RpcManager
+import ox.fzer0x.snakeloader.RpcBridge
+import ox.fzer0x.snakeloader.data.*
 
 class MemoryInspectorViewModel(
-    private val rpcManager: RpcManager? = null,
-    private val fridaManager: ox.fzer0x.snakeloader.FridaManager? = null
+    val rpcBridge: RpcBridge? = null,
+    val fridaManager: ox.fzer0x.snakeloader.FridaManager? = null,
+    val patchRepository: PatchRepository? = null,
+    val transactionManager: PatchTransactionManager? = null
 ) : ViewModel() {
     companion object {
         private const val TAG = "MemoryInspectorViewModel"
@@ -19,201 +26,179 @@ class MemoryInspectorViewModel(
     val isLoading = mutableStateOf(false)
     val errorMessage = mutableStateOf<String?>(null)
     val memoryDump = mutableStateOf<Map<String, String>>(emptyMap())
-    val registryInfo = mutableStateOf<Map<String, Any>?>(null)
     val isRpcAvailable = mutableStateOf(false)
     
-    val scanResults = mutableStateOf<List<Map<String, Any>>>(emptyList())
-    val lastScanPattern = mutableStateOf("")
+    val scanResults = mutableStateOf<List<AobScanResult>>(emptyList())
+    val activeScanId = mutableStateOf<String?>(null)
+    val isAobScanning = mutableStateOf(false)
+    val aobStatusMessage = mutableStateOf<String?>(null)
 
-    private val scope = CoroutineScope(Dispatchers.Main + Job())
     private val detectedHooks = mutableStateOf<MutableSet<String>>(mutableSetOf())
+    private var scanJob: Job? = null
+
+    val patches: StateFlow<List<MemoryPatch>> = patchRepository?.patches ?: MutableStateFlow<List<MemoryPatch>>(emptyList()).asStateFlow()
+
+    init {
+        checkRpcStatus()
+    }
 
     fun refreshHooks() {
-        isLoading.value = true
-        errorMessage.value = null
+        checkRpcStatus()
+    }
 
-        scope.launch {
-            val shouldUseRpc = checkRpcAvailability()
-
-            if (shouldUseRpc && rpcManager != null) {
-                rpcManager.listHooksAsync { hookList ->
-                    hooks.value = hookList
-                    isLoading.value = false
-                    isRpcAvailable.value = true
-                    Log.d(TAG, "Loaded ${hookList.size} hooks via RPC")
-                }
-            } else {
-                isRpcAvailable.value = false
-                loadHooksFromLogs()
+    fun checkRpcStatus() {
+        viewModelScope.launch {
+            if (fridaManager != null) {
+                val status = fridaManager.getFridaStatus()
+                val serverRunning = status["server_running"] as? Boolean ?: false
+                isRpcAvailable.value = serverRunning
             }
         }
     }
 
-    private suspend fun checkRpcAvailability(): Boolean {
-        if (rpcManager == null) {
-            Log.d(TAG, "RPC manager is null")
-            return false
+    fun startAobScan(moduleName: String?, patternHex: String, minFixedBytes: Int = 2, maxResults: Int = 100) {
+        if (rpcBridge == null) {
+            errorMessage.value = "RPC Bridge not initialized"
+            return
         }
 
-        if (fridaManager == null) {
-            Log.d(TAG, "FridaManager is null")
-            return false
-        }
+        scanJob?.cancel()
+        isAobScanning.value = true
+        errorMessage.value = null
+        aobStatusMessage.value = "Initiating AOB scan..."
 
-        val status = fridaManager.getFridaStatus()
-        val runningBinary = status["running_binary"] as? String ?: "none"
-        val selectedMode = status["selected_mode"] as? String ?: "auto"
-
-        val isCliRunning = runningBinary == "cli" || runningBinary == "inject"
-
-        Log.d(TAG, "RPC availability check: runningBinary=$runningBinary, selectedMode=$selectedMode, isCliRunning=$isCliRunning")
-
-        return isCliRunning
-    }
-
-    private fun loadHooksFromLogs() {
-        scope.launch {
+        scanJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val hookList = mutableListOf<HookInfo>()
+                val response = rpcBridge.startAobScan(moduleName, patternHex, minFixedBytes, maxResults)
+                if (response.error != null) {
+                    withContext(Dispatchers.Main) {
+                        errorMessage.value = "AOB Scan failed: ${response.error}"
+                        isAobScanning.value = false
+                    }
+                    return@launch
+                }
 
-                hookList.add(HookInfo(name = "__rpc_handler__", active = true))
-                hookList.add(HookInfo(name = "__memory_dumper__", active = true))
-                hookList.add(HookInfo(name = "__test_hook__", active = true))
-                hookList.add(HookInfo(name = "__memory_test__", active = true))
+                val resultMap = response.result as? Map<*, *>
+                val scanId = resultMap?.get("scanId") as? String
+                val initStatus = resultMap?.get("status") as? String
 
-                detectedHooks.value.forEach { hookName ->
-                    if (!hookList.any { it.name == hookName }) {
-                        hookList.add(HookInfo(name = hookName, active = true))
+                if (scanId == null || initStatus == "ERROR") {
+                    withContext(Dispatchers.Main) {
+                        errorMessage.value = resultMap?.get("error") as? String ?: "Failed to start AOB scan"
+                        isAobScanning.value = false
+                    }
+                    return@launch
+                }
+
+                withContext(Dispatchers.Main) {
+                    activeScanId.value = scanId
+                    aobStatusMessage.value = "Scanning memory..."
+                }
+
+                // Poll scan status until complete or cancelled
+                while (isActive) {
+                    delay(500)
+                    val statusResp = rpcBridge.getAobScanStatus(scanId)
+                    val statusMap = statusResp.result as? Map<*, *> ?: break
+                    val statusStr = statusMap["status"] as? String ?: "ERROR"
+
+                    val resultsListRaw = statusMap["results"] as? List<*> ?: emptyList<Any>()
+                    val parsedResults = resultsListRaw.mapNotNull { item ->
+                        val map = item as? Map<*, *> ?: return@mapNotNull null
+                        AobScanResult(
+                            addressHex = map["addressHex"] as? String ?: "",
+                            moduleName = map["moduleName"] as? String ?: "",
+                            rvaOffsetHex = map["rvaOffsetHex"] as? String ?: "",
+                            matchedBytesHex = map["matchedBytesHex"] as? String ?: "",
+                            size = (map["size"] as? Number)?.toInt() ?: 4
+                        )
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        scanResults.value = parsedResults
+                        aobStatusMessage.value = "Scanning... Found ${parsedResults.size} match(es)"
+                    }
+
+                    if (statusStr == "COMPLETED" || statusStr == "CANCELLED" || statusStr == "ERROR") {
+                        withContext(Dispatchers.Main) {
+                            isAobScanning.value = false
+                            activeScanId.value = null
+                            aobStatusMessage.value = if (statusStr == "COMPLETED") "Scan completed. ${parsedResults.size} match(es)." else "Scan $statusStr."
+                        }
+                        break
                     }
                 }
-
-                hooks.value = hookList
-                isLoading.value = false
-                Log.d(TAG, "Loaded ${hookList.size} hooks from logs")
-                
-                getRegistryStatus()
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to load hooks from logs", e)
-                errorMessage.value = "Failed to load hooks: ${e.message}"
-                isLoading.value = false
+                if (e !is CancellationException) {
+                    withContext(Dispatchers.Main) {
+                        errorMessage.value = "AOB Scan error: ${e.message}"
+                        isAobScanning.value = false
+                    }
+                }
             }
         }
+    }
+
+    fun cancelAobScan() {
+        val scanId = activeScanId.value
+        scanJob?.cancel()
+        scanJob = null
+        isAobScanning.value = false
+        aobStatusMessage.value = "Scan cancelled"
+
+        if (scanId != null && rpcBridge != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                rpcBridge.cancelAobScan(scanId)
+            }
+        }
+    }
+
+    fun applyPatch(patch: MemoryPatch) {
+        if (patchRepository == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            patchRepository.savePatch(patch)
+            patchRepository.togglePatch(patch.id)
+        }
+    }
+
+    fun togglePatch(patchId: String) {
+        if (patchRepository == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            patchRepository.togglePatch(patchId)
+        }
+    }
+
+    fun removePatch(patchId: String) {
+        if (patchRepository == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            patchRepository.removePatch(patchId)
+        }
+    }
+
+    fun convertAobResultToPatch(result: AobScanResult, packageName: String, patchName: String, preset: PatchPreset, customHex: String = "") {
+        val hexToWrite = if (preset == PatchPreset.CUSTOM) customHex else preset.hexBytes
+        if (hexToWrite.isBlank()) return
+
+        val newPatch = MemoryPatch(
+            id = "patch_${System.currentTimeMillis()}_${(1000..9999).random()}",
+            name = patchName.ifBlank { "Patch @ ${result.rvaOffsetHex}" },
+            packageName = packageName,
+            moduleName = result.moduleName,
+            rvaOffsetHex = result.rvaOffsetHex,
+            lastRuntimeAddressHex = result.addressHex,
+            originalBytesHex = result.matchedBytesHex,
+            patchBytesHex = hexToWrite,
+            status = PatchStatus.UNVERIFIED,
+            targetArch = TargetArchitecture.ARM64,
+            preset = preset
+        )
+
+        applyPatch(newPatch)
     }
 
     fun addDetectedHook(hookName: String) {
         if (!detectedHooks.value.contains(hookName)) {
             detectedHooks.value.add(hookName)
-            Log.d(TAG, "Detected hook: $hookName")
         }
-    }
-
-    fun toggleHook(hookName: String) {
-        if (isRpcAvailable.value) {
-            rpcManager?.toggleHookAsync(hookName) { success ->
-                if (success) {
-                    hooks.value = hooks.value.map {
-                        if (it.name == hookName) it.copy(active = !it.active) else it
-                    }
-                    Log.d(TAG, "Hook toggled: $hookName")
-                } else {
-                    errorMessage.value = "Failed to toggle hook: $hookName"
-                }
-            }
-        } else {
-            errorMessage.value = "RPC not available - cannot toggle hooks in inject mode"
-        }
-    }
-
-    fun dumpMemoryRegion(address: String, size: Int) {
-        isLoading.value = true
-        errorMessage.value = null
-
-        if (isRpcAvailable.value) {
-            rpcManager?.dumpMemoryAsync(address, size) { data ->
-                isLoading.value = false
-                if (data != null) {
-                    memoryDump.value = parseMemoryDump(address, data)
-                    Log.d(TAG, "Memory dumped: $address (${data.size} bytes)")
-                } else {
-                    errorMessage.value = "Failed to dump memory at $address"
-                }
-            }
-        } else {
-            isLoading.value = false
-            errorMessage.value = "RPC not available - memory dump requires RPC connection"
-        }
-    }
-
-    private fun parseMemoryDump(address: String, data: ByteArray): Map<String, String> {
-        val hex = data.joinToString(" ") { "%02x".format(it) }
-        val ascii = data.map { 
-            if (it in 32..126) it.toInt().toChar() else '.'
-        }.joinToString("")
-
-        return mapOf(
-            "address" to address,
-            "size" to "${data.size} bytes",
-            "hex" to hex,
-            "ascii" to ascii
-        )
-    }
-
-    fun performScan(pattern: String, moduleName: String = "") {
-        if (!isRpcAvailable.value) {
-            errorMessage.value = "RPC not available for scanning"
-            return
-        }
-
-        isLoading.value = true
-        errorMessage.value = null
-        lastScanPattern.value = pattern
-
-        rpcManager?.findPatternAsync(moduleName, pattern) { results ->
-            isLoading.value = false
-            scanResults.value = results
-            Log.d(TAG, "Scan found ${results.size} matches")
-        }
-    }
-
-    fun writeMemory(address: String, hexValue: String) {
-        if (!isRpcAvailable.value) {
-            errorMessage.value = "RPC not available for memory write"
-            return
-        }
-
-        isLoading.value = true
-        rpcManager?.writeMemoryAsync(address, hexValue) { success ->
-            isLoading.value = false
-            if (success) {
-                Log.d(TAG, "Successfully wrote $hexValue to $address")
-                if (memoryDump.value["address"] == address) {
-                    dumpMemoryRegion(address, memoryDump.value["size"]?.replace(" bytes", "")?.toIntOrNull() ?: 256)
-                }
-            } else {
-                errorMessage.value = "Failed to write memory at $address"
-            }
-        }
-    }
-
-    fun getRegistryStatus() {
-        if (isRpcAvailable.value) {
-            rpcManager?.getDiagnosticsAsync { registry ->
-                registryInfo.value = registry
-                Log.d(TAG, "Registry: $registry")
-            }
-        } else {
-            registryInfo.value = mapOf(
-                "hooks" to hooks.value.map { it.name },
-                "scripts" to listOf("rpc_handler.js", "memory_dumper.js", "core_instrumentation.js"),
-                "mode" to "Discovery Mode (Connecting...)",
-                "bridge" to "TCP:27043",
-                "status" to "Waiting for Frida RPC exports..."
-            )
-        }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        scope.cancel()
     }
 }

@@ -2,7 +2,21 @@
 
 All notable changes, design system unification, IL2CPP Inspector features, Frida binary upgrades, launcher fixes, and Autonomous AI Agent capabilities are documented in this file.
 
-<<<<<<< HEAD
+---
+
+## [1.2.1] - Settings Screen Layout Fixes & Maintenance
+
+### 🎨 Settings UI & Layout Fixes (`SettingsScreen.kt`)
+- **AI Engine Chips Layout**: Replaced `LazyRow` container with responsive `FlowRow` for AI Provider selection (`Gemini Cloud`, `Ollama (127.0.0.1 / PC)`, `On-Device GGUF (Mobile)`) to eliminate horizontal clipping on narrow/portrait mobile screens inside cards.
+- **Gemini Model Choice Chips**: Converted fixed `Row` container to `FlowRow` with `maxLines = 1` for Gemini Model selection chips (`Gemini 3.8 Flash`, `Gemini 3.6 Flash`, `3.5 Flash Lite`) to prevent unnatural line wrapping inside chip labels (`Gemini 3.6\nFlash`).
+
+### 🔄 App Update Dialog & Up-To-Date Feedback (`UpdateManager.kt` & `AppUpdateDialog.kt`)
+- **Up-To-Date Confirmation Dialog**: Added explicit `UpdateState.UpToDate` handling for manual update checks triggered from Settings. When clicking "Check for Updates" and running the latest version, a dialog now appears with a `SuccessGreen` checkmark, stating *"ReShift is up to date!"*.
+- **Manual vs Background Check Disambiguation**: Introduced `isManual` flag in `checkForUpdates()` so background startup checks stay silent when up to date, while manual checks in Settings provide instant visual dialog feedback.
+
+### 📦 Build & Versioning
+- **Version Bump**: Updated `versionCode` to `121` and `versionName` to `1.2.1` in `app/build.gradle.kts`.
+
 ---
 
 ## [1.2.0] - Universal UE4/UE5 Dumper, KernelSU Next & Performance Overhaul
@@ -92,8 +106,6 @@ All notable changes, design system unification, IL2CPP Inspector features, Frida
 
 ---
 
-=======
->>>>>>> 54ed380d48805d46ef1601f694a2866aa4fd9089
 ## [1.1.0] - Design System & Feature Overhaul
 
 ### 🎨 Unified Design System & UI/UX Redesign

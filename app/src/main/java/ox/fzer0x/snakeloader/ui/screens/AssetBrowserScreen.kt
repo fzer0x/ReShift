@@ -60,6 +60,8 @@ fun AssetBrowserScreen(
     var previewMetadata by remember { mutableStateOf<ModuleMetadataDisplay?>(null) }
     var isFetchingPreview by remember { mutableStateOf(false) }
 
+    val moduleDescriptions = remember { mutableStateMapOf<String, String>() }
+
     fun loadModules(forceRefresh: Boolean = false) {
         scope.launch {
             isLoading = true
@@ -92,6 +94,9 @@ fun AssetBrowserScreen(
                 val extractedName = metadataMap["name"] as? String
                 val version = (metadataMap["metadata"] as? ModuleMetadata)?.version
                 val description = metadataMap["description"] as? String
+                if (description != null) {
+                    moduleDescriptions[target.path] = description
+                }
                 previewMetadata = ModuleMetadataDisplay(
                     file = target,
                     name = extractedName ?: target.fileName.removeSuffix(".js"),
@@ -144,6 +149,27 @@ fun AssetBrowserScreen(
         filteredModules.groupBy { it.folder.ifEmpty { "Root" } }
     }
 
+    LaunchedEffect(expandedFolders, filteredModules) {
+        val visibleModules = filteredModules.filter {
+            (it.folder.ifEmpty { "Root" }) in expandedFolders || searchQuery.isNotEmpty()
+        }
+        visibleModules.forEach { module ->
+            if (!moduleDescriptions.containsKey(module.path)) {
+                scope.launch {
+                    val content = githubApiService.downloadScriptContent(module.downloadUrl)
+                    if (content != null) {
+                        val metadata = scriptManager.extractMetadata(content)
+                        val desc = metadata["description"] as? String
+                        moduleDescriptions[module.path] = desc?.takeIf { it.isNotBlank() }
+                            ?: module.folder.ifEmpty { module.fileName.removeSuffix(".js") }
+                    } else {
+                        moduleDescriptions[module.path] = module.folder.ifEmpty { module.fileName.removeSuffix(".js") }
+                    }
+                }
+            }
+        }
+    }
+
     fun toggleFolder(folder: String) {
         expandedFolders = if (folder in expandedFolders) {
             expandedFolders - folder
@@ -153,6 +179,7 @@ fun AssetBrowserScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             ReShiftTopAppBar(
@@ -372,13 +399,13 @@ fun AssetBrowserScreen(
                                                     overflow = TextOverflow.Ellipsis
                                                 )
                                                 Spacer(Modifier.height(2.dp))
+                                                val description = moduleDescriptions[module.path]
                                                 Text(
-                                                    module.path,
+                                                    description ?: "Loading description...",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    fontFamily = FontFamily.Monospace
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                             }
                                             IconButton(
@@ -393,7 +420,6 @@ fun AssetBrowserScreen(
                             }
                         }
                     }
-                    item { Spacer(Modifier.height(40.dp)) }
                 }
             }
         }

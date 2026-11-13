@@ -51,3 +51,6 @@ secrets.properties
 *.apk
 *.aab
 
+/Menu_RP/
+/app/src/main/assets/ue4_lua_bridge.js
+/app/src/main/assets/ue4_radar_standalone.js

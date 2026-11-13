@@ -1,6 +1,8 @@
 /**
- * CSR Racing 2 Mod
+ * CSR Racing 2
  * @version 1.4
+ * @author ReShift
+ * Target: com.naturalmotion.customstreetracer2
  * @description Unlimited Gold, Money & Keys. Use in Zygisk Mode! Do not use on your real Account. Do not use on online mode. This mod is for educational purposes only.
  * @noedit
  */

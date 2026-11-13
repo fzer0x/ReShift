@@ -135,6 +135,7 @@ fun AdvancedFridaScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             ReShiftTopAppBar(
@@ -229,8 +230,6 @@ fun AdvancedFridaScreen(
                     }
                 }
             }
-
-            item { Spacer(Modifier.height(40.dp)) }
         }
     }
 

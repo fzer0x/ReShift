@@ -221,7 +221,10 @@ class MainActivity : ComponentActivity() {
                         zygiskManager = zygiskManager,
                         updateManager = updateManager,
                         statusViewModel = statusViewModel,
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .consumeWindowInsets(innerPadding)
                     )
 
                     showModuleDialog?.let { type ->

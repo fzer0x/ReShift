@@ -68,6 +68,7 @@ fun AppDetailsScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             ReShiftTopAppBar(
                 title = appLabel,
@@ -167,8 +168,6 @@ fun AppDetailsScreen(
                     Text("Add Module", fontWeight = FontWeight.Bold)
                 }
             }
-
-            item { Spacer(Modifier.height(80.dp)) }
         }
 
         if (showAddDialog) {

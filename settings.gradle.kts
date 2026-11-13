@@ -20,4 +20,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ReShift"
 include(":app")
- 
+include(":Menu_RP")

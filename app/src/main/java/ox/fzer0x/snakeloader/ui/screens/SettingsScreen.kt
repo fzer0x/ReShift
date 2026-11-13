@@ -71,6 +71,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     var isFridaOverlayEnabled by remember { mutableStateOf(settingsManager.isFridaOverlayEnabled) }
     var overlayTextSize by remember { mutableStateOf(settingsManager.overlayTextSize) }
     var overlayOpacity by remember { mutableStateOf(settingsManager.overlayOpacity) }
+    var selectedOverlayColor by remember { mutableStateOf(settingsManager.overlayColor) }
 
     var isStealthModeEnabled by remember { mutableStateOf(settingsManager.isStealthModeEnabled) }
     var isAppMasked by remember {
@@ -123,6 +124,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             ReShiftTopAppBar(
                 title = "Settings",
@@ -225,6 +227,41 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                             },
                             valueRange = 0.1f..1f
                         )
+
+                        Spacer(Modifier.height(10.dp))
+                        Text("On-Device Rendering Color", style = MaterialTheme.typography.labelMedium)
+                        Spacer(Modifier.height(8.dp))
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(vertical = 4.dp)
+                        ) {
+                            items(SettingsManager.OVERLAY_COLOR_PRESETS) { (colorLong, colorName) ->
+                                val color = Color(colorLong)
+                                val isSelected = selectedOverlayColor == colorLong
+                                Surface(
+                                    onClick = {
+                                        selectedOverlayColor = colorLong
+                                        settingsManager.overlayColor = colorLong
+                                        if (Settings.canDrawOverlays(context)) updateOverlayService()
+                                    },
+                                    shape = CircleShape,
+                                    color = color,
+                                    border = if (isSelected) BorderStroke(2.5.dp, MaterialTheme.colorScheme.onSurface) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    if (isSelected) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = colorName,
+                                                tint = if (colorLong == 0xFFFFFFFFL) Color.Black else Color.White,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -312,37 +349,32 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                         )
                         Spacer(Modifier.height(12.dp))
 
-                        LazyRow(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            item {
-                                FilterChip(
-                                    selected = viewModel.aiProvider == "GEMINI",
-                                    onClick = { viewModel.updateAiProvider("GEMINI") },
-                                    label = { Text("Gemini Cloud") },
-                                    shape = ReShiftChipShape,
-                                    leadingIcon = { Icon(Icons.Default.Cloud, null, modifier = Modifier.size(16.dp)) }
-                                )
-                            }
-                            item {
-                                FilterChip(
-                                    selected = viewModel.aiProvider == "OLLAMA",
-                                    onClick = { viewModel.updateAiProvider("OLLAMA") },
-                                    label = { Text("Ollama (127.0.0.1 / PC)") },
-                                    shape = ReShiftChipShape,
-                                    leadingIcon = { Icon(Icons.Default.Dns, null, modifier = Modifier.size(16.dp)) }
-                                )
-                            }
-                            item {
-                                FilterChip(
-                                    selected = viewModel.aiProvider == "ON_DEVICE_GGUF",
-                                    onClick = { viewModel.updateAiProvider("ON_DEVICE_GGUF") },
-                                    label = { Text("On-Device GGUF (Mobile)") },
-                                    shape = ReShiftChipShape,
-                                    leadingIcon = { Icon(Icons.Default.Smartphone, null, modifier = Modifier.size(16.dp)) }
-                                )
-                            }
+                            FilterChip(
+                                selected = viewModel.aiProvider == "GEMINI",
+                                onClick = { viewModel.updateAiProvider("GEMINI") },
+                                label = { Text("Gemini Cloud", maxLines = 1) },
+                                shape = ReShiftChipShape,
+                                leadingIcon = { Icon(Icons.Default.Cloud, null, modifier = Modifier.size(16.dp)) }
+                            )
+                            FilterChip(
+                                selected = viewModel.aiProvider == "OLLAMA",
+                                onClick = { viewModel.updateAiProvider("OLLAMA") },
+                                label = { Text("Ollama (127.0.0.1 / PC)", maxLines = 1) },
+                                shape = ReShiftChipShape,
+                                leadingIcon = { Icon(Icons.Default.Dns, null, modifier = Modifier.size(16.dp)) }
+                            )
+                            FilterChip(
+                                selected = viewModel.aiProvider == "ON_DEVICE_GGUF",
+                                onClick = { viewModel.updateAiProvider("ON_DEVICE_GGUF") },
+                                label = { Text("On-Device GGUF (Mobile)", maxLines = 1) },
+                                shape = ReShiftChipShape,
+                                leadingIcon = { Icon(Icons.Default.Smartphone, null, modifier = Modifier.size(16.dp)) }
+                            )
                         }
 
                         Spacer(Modifier.height(16.dp))
@@ -371,16 +403,16 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
 
                             Spacer(Modifier.height(12.dp))
 
-                            Row(
+                            FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 SettingsManager.SUPPORTED_GEMINI_MODELS.forEach { (modelId, modelLabel) ->
                                     FilterChip(
                                         selected = viewModel.geminiModel == modelId,
                                         onClick = { viewModel.updateGeminiModel(modelId) },
-                                        label = { Text(modelLabel) },
+                                        label = { Text(modelLabel, maxLines = 1) },
                                         shape = ReShiftChipShape,
                                         leadingIcon = {
                                             val icon = if (modelId.contains("lite")) Icons.Default.Bolt else Icons.Default.AutoAwesome
@@ -782,7 +814,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                         Button(
                             onClick = {
                                 scope.launch {
-                                    viewModel.updateManager.checkForUpdates()
+                                    viewModel.updateManager.checkForUpdates(isManual = true)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
@@ -796,8 +828,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit) {
                     }
                 }
             }
-
-            item { Spacer(Modifier.height(32.dp)) }
         }
     }
 

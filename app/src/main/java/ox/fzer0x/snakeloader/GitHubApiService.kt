@@ -495,12 +495,16 @@ class GitHubApiService(private val context: Context) {
                 else -> null
             }
 
-            if (downloadUrl.startsWith("asset://") && assetRelativePath != null) {
+            if (assetRelativePath != null) {
                 val decodedPath = try { URLDecoder.decode(assetRelativePath, "UTF-8") } catch (_: Exception) { assetRelativePath }
                 try {
-                    return@withContext context.assets.open("ReShiftModules/$decodedPath").bufferedReader().use { it.readText() }
+                    val localContent = context.assets.open("ReShiftModules/$decodedPath").bufferedReader().use { it.readText() }
+                    if (localContent.isNotBlank()) {
+                        Log.i(TAG, "Loaded module from local APK asset: ReShiftModules/$decodedPath")
+                        return@withContext localContent
+                    }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed reading direct asset $decodedPath: ${e.message}")
+                    Log.w(TAG, "Failed reading asset $decodedPath: ${e.message}")
                 }
             }
 

@@ -78,6 +78,7 @@ fun ZygiskSettingsScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             ReShiftTopAppBar(
                 title = "Zygisk Inject",
@@ -213,8 +214,6 @@ fun ZygiskSettingsScreen(
                     )
                 }
             }
-
-            item { Spacer(Modifier.height(80.dp)) }
         }
     }
 
@@ -239,7 +238,7 @@ fun ZygiskSettingsScreen(
             onDismissRequest = { selectedPackageForScript = null },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Javascript, null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Code, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(12.dp))
                     Text("Select Boot Scripts", fontWeight = FontWeight.Bold)
                 }
@@ -529,31 +528,68 @@ fun ZygiskAppItem(
                     )
                 }
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(6.dp))
 
                 if (assignedScripts.isEmpty()) {
-                    Text(
-                        text = "No scripts",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Surface(
+                        onClick = onSelectScript,
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Load Script",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 } else {
                     LazyRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         items(assignedScripts) { script ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            Surface(
+                                onClick = onSelectScript,
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                             ) {
                                 Text(
                                     text = script.name,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                        item {
+                            Surface(
+                                onClick = onSelectScript,
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = "Edit Scripts",
+                                    modifier = Modifier.padding(4.dp).size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -561,13 +597,7 @@ fun ZygiskAppItem(
                 }
             }
 
-            IconButton(onClick = onSelectScript) {
-                Icon(
-                    Icons.Default.Javascript,
-                    contentDescription = "Assign Scripts",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }
+            Spacer(Modifier.width(8.dp))
 
             IconButton(onClick = onDelete) {
                 Icon(

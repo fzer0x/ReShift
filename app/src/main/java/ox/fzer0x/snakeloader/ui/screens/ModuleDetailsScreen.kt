@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import ox.fzer0x.snakeloader.AppInfo
 import ox.fzer0x.snakeloader.DownloadedScript
 import ox.fzer0x.snakeloader.FridaManager
+import ox.fzer0x.snakeloader.ModuleMetadata
 import ox.fzer0x.snakeloader.ScriptManager
 import ox.fzer0x.snakeloader.ui.components.ReShiftCard
 import ox.fzer0x.snakeloader.ui.components.ReShiftTopAppBar
@@ -66,6 +67,7 @@ fun ModuleDetailsScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             ReShiftTopAppBar(
                 title = script.name,
@@ -100,6 +102,24 @@ fun ModuleDetailsScreen(
                         if (script.description != null) {
                             Spacer(Modifier.height(12.dp))
                             Text(script.description, style = MaterialTheme.typography.bodyMedium)
+                        }
+
+                        val apkPath = remember(script) {
+                            script.metadata.apkPath ?: (scriptManager.extractMetadata(script.content)["metadata"] as? ModuleMetadata)?.apkPath
+                        }
+
+                        if (apkPath != null) {
+                            Spacer(Modifier.height(12.dp))
+                            Button(
+                                onClick = { installApkFromAssets(context, apkPath) },
+                                shape = ReShiftButtonShape,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3DDC84)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Android, contentDescription = null, tint = Color.Black)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Install Associated APK", fontWeight = FontWeight.Bold, color = Color.Black)
+                            }
                         }
 
                         HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
@@ -238,8 +258,6 @@ fun ModuleDetailsScreen(
                     }
                 }
             }
-
-            item { Spacer(Modifier.height(40.dp)) }
         }
     }
 }

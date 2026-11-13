@@ -1,6 +1,8 @@
 package ox.fzer0x.snakeloader
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,13 +23,13 @@ class UpdateManager(private val context: Context) {
 
     sealed class UpdateState {
         object Idle : UpdateState()
-        object Checking : UpdateState()
+        data class Checking(val isManual: Boolean = false) : UpdateState()
         data class UpdateAvailable(val versionCode: Int, val versionName: String, val downloadUrl: String) : UpdateState()
-        object UpToDate : UpdateState()
+        data class UpToDate(val isManual: Boolean = false) : UpdateState()
         data class Downloading(val progress: Float) : UpdateState()
         object Installing : UpdateState()
         object Success : UpdateState()
-        data class Error(val message: String) : UpdateState()
+        data class Error(val message: String, val isManual: Boolean = false) : UpdateState()
     }
 
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
@@ -37,7 +39,8 @@ class UpdateManager(private val context: Context) {
         _updateState.value = UpdateState.Idle
     }
 
-    suspend fun checkForUpdates() = withContext(Dispatchers.IO) {
+    suspend fun checkForUpdates(isManual: Boolean = false) = withContext(Dispatchers.IO) {
+        _updateState.value = UpdateState.Checking(isManual)
         try {
             val url = URL(GITHUB_API_URL)
             val connection = url.openConnection() as HttpURLConnection
@@ -47,44 +50,59 @@ class UpdateManager(private val context: Context) {
             if (connection.responseCode == 200) {
                 val response = connection.inputStream.bufferedReader().use { it.readText() }
                 val json = JSONObject(response)
-                val tagName = json.getString("tag_name") // Format: "100-1.0.0"
+                val tagName = json.getString("tag_name")
                 
-                val parts = tagName.split("-")
-                if (parts.size >= 2) {
-                    val latestVersionCode = parts[0].toIntOrNull() ?: 0
-                    val latestVersionName = parts[1]
-                    
-                    val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                        context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
-                    } else {
-                        @Suppress("DEPRECATION")
-                        context.packageManager.getPackageInfo(context.packageName, 0)
+                val cleanTag = tagName.removePrefix("v")
+                val parts = cleanTag.split("-")
+                val latestVersionCode = if (parts.size >= 2) {
+                    parts[0].toIntOrNull() ?: 0
+                } else {
+                    0
+                }
+                val latestVersionName = if (parts.size >= 2) parts[1] else cleanTag
+                
+                val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.packageManager.getPackageInfo(context.packageName, 0)
+                }
+                
+                val currentVersionCode = packageInfo.longVersionCode.toInt()
+                
+                if (latestVersionCode > currentVersionCode) {
+                    val assets = json.getJSONArray("assets")
+                    var downloadUrl = ""
+                    for (i in 0 until assets.length()) {
+                        val asset = assets.getJSONObject(i)
+                        if (asset.getString("name").endsWith(".apk")) {
+                            downloadUrl = asset.getString("browser_download_url")
+                            break
+                        }
                     }
                     
-                    val currentVersionCode = packageInfo.longVersionCode.toInt()
-                    
-                    if (latestVersionCode > currentVersionCode) {
-                        val assets = json.getJSONArray("assets")
-                        var downloadUrl = ""
-                        for (i in 0 until assets.length()) {
-                            val asset = assets.getJSONObject(i)
-                            if (asset.getString("name").endsWith(".apk")) {
-                                downloadUrl = asset.getString("browser_download_url")
-                                break
-                            }
-                        }
-                        
-                        if (downloadUrl.isNotEmpty()) {
-                            _updateState.value = UpdateState.UpdateAvailable(latestVersionCode, latestVersionName, downloadUrl)
-                        }
+                    if (downloadUrl.isNotEmpty()) {
+                        _updateState.value = UpdateState.UpdateAvailable(latestVersionCode, latestVersionName, downloadUrl)
                     } else {
-                        _updateState.value = UpdateState.UpToDate
+                        _updateState.value = UpdateState.UpToDate(isManual)
                     }
+                } else {
+                    _updateState.value = UpdateState.UpToDate(isManual)
+                }
+            } else {
+                if (isManual) {
+                    _updateState.value = UpdateState.Error("Server returned code ${connection.responseCode}", isManual = true)
+                } else {
+                    _updateState.value = UpdateState.Idle
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Update check failed silently", e)
-            _updateState.value = UpdateState.Idle
+            Log.e(TAG, "Update check failed", e)
+            if (isManual) {
+                _updateState.value = UpdateState.Error(e.localizedMessage ?: "Network error", isManual = true)
+            } else {
+                _updateState.value = UpdateState.Idle
+            }
         }
     }
 
@@ -122,11 +140,11 @@ class UpdateManager(private val context: Context) {
                 _updateState.value = UpdateState.Success
             } else {
                 Log.e(TAG, "Installation failed: ${result.stderr}")
-                _updateState.value = UpdateState.Idle
+                _updateState.value = UpdateState.Error("Installation failed: ${result.stderr}", isManual = true)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Update failed", e)
-            _updateState.value = UpdateState.Idle
+            _updateState.value = UpdateState.Error(e.localizedMessage ?: "Update installation failed", isManual = true)
         } finally {
             if (tempApk.exists()) tempApk.delete()
         }

@@ -40,15 +40,28 @@ class ScriptManager(private val context: Context) {
         
         var modified = false
         _scripts.forEachIndexed { index, script ->
-            val result = extractMetadata(script.content)
+            var updatedContent = script.content
+            if (script.id.startsWith("reshift/") || script.repository == "ReShift Modules" || script.path.isNotBlank()) {
+                val assetPath = if (script.path.isNotBlank()) script.path else script.id.removePrefix("reshift/")
+                try {
+                    val latestAssetContent = context.assets.open("ReShiftModules/$assetPath").bufferedReader().use { it.readText() }
+                    if (latestAssetContent.isNotBlank() && latestAssetContent != script.content) {
+                        updatedContent = latestAssetContent
+                        modified = true
+                        Log.i(TAG, "Syncing updated asset module to cache: ReShiftModules/$assetPath")
+                    }
+                } catch (_: Exception) {}
+            }
+
+            val result = extractMetadata(updatedContent)
             val metadata = result["metadata"] as ModuleMetadata
             val description = (result["description"] as? String)
             
             val currentPlaceholder = script.description?.contains("Imported from", ignoreCase = true) ?: true
             val newDescription = if (currentPlaceholder && description != null) description else script.description
             
-            if (script.metadata != metadata || script.description != newDescription) {
-                _scripts[index] = script.copy(metadata = metadata, description = newDescription)
+            if (updatedContent != script.content || script.metadata != metadata || script.description != newDescription) {
+                _scripts[index] = script.copy(content = updatedContent, metadata = metadata, description = newDescription)
                 modified = true
             }
         }
@@ -301,15 +314,33 @@ class ScriptManager(private val context: Context) {
         }.keys
     }
 
+    fun duplicateScript(scriptId: String): DownloadedScript? {
+        val original = _scripts.find { it.id == scriptId } ?: return null
+        val timeStamp = System.currentTimeMillis()
+        val newId = "local/$timeStamp/${original.name.lowercase().replace(" ", "_")}_copy.js"
+        val newScript = original.copy(
+            id = newId,
+            name = "${original.name} (Copy)",
+            repository = "Local Storage",
+            path = "${original.path}_copy.js",
+            downloadedAt = timeStamp,
+            metadata = original.metadata.copy(noEdit = false)
+        )
+        addScript(newScript)
+        return newScript
+    }
+
     fun extractMetadata(content: String): Map<String, Any?> {
         var name: String? = null
         var version: String? = null
         var author: String? = null
         var description: String? = null
+        var category: String? = null
+        var apkPath: String? = null
         var noEdit = false
         val targetPackages = mutableListOf<String>()
 
-        val lines = content.lines().take(100)
+        val lines = content.lines().take(120)
         var inHeaderComment = false
         val headerLines = mutableListOf<String>()
 
@@ -317,42 +348,65 @@ class ScriptManager(private val context: Context) {
             val trimmedLine = line.trim()
             if (trimmedLine.startsWith("/*") || trimmedLine.startsWith("*") || (inHeaderComment && trimmedLine.isNotEmpty())) {
                 inHeaderComment = true
-                headerLines.add(trimmedLine.removePrefix("/*").removePrefix("*").trim())
+                val clean = trimmedLine.removePrefix("/*").removePrefix("*").removeSuffix("*/").trim()
+                if (clean.isNotEmpty()) {
+                    headerLines.add(clean)
+                }
                 if (trimmedLine.contains("*/")) {
                     inHeaderComment = false
-                    break
                 }
                 continue
             }
             if (trimmedLine.startsWith("//")) {
-                headerLines.add(trimmedLine.removePrefix("//").trim())
+                val clean = trimmedLine.removePrefix("//").trim()
+                if (clean.isNotEmpty()) {
+                    headerLines.add(clean)
+                }
                 continue
             }
-            if (trimmedLine.isNotEmpty()) break
+            if (trimmedLine.isNotEmpty() && !inHeaderComment) break
         }
 
         for (cleanLine in headerLines) {
+            val lower = cleanLine.lowercase()
             when {
-                cleanLine.startsWith("@version", ignoreCase = true) -> {
-                    version = cleanLine.substringAfter("@version").trim().removePrefix(":").trim()
+                lower.startsWith("@version") || lower.startsWith("version:") -> {
+                    val value = cleanLine.substringAfter(":").removePrefix("@version").trim().removePrefix(":").trim()
+                    if (value.isNotBlank()) version = value
                 }
-                cleanLine.startsWith("@author", ignoreCase = true) -> {
-                    author = cleanLine.substringAfter("@author").trim().removePrefix(":").trim()
+                lower.startsWith("@author") || lower.startsWith("author:") -> {
+                    val value = cleanLine.substringAfter(":").removePrefix("@author").trim().removePrefix(":").trim()
+                    if (value.isNotBlank()) author = value
                 }
-                cleanLine.startsWith("@description", ignoreCase = true) -> {
-                    val potential = cleanLine.substringAfter("@description").trim().removePrefix(":").trim()
+                lower.startsWith("@description") || lower.startsWith("description:") -> {
+                    val potential = cleanLine.substringAfter(":").removePrefix("@description").trim().removePrefix(":").trim()
                     if (potential.isGoodDescription()) {
                         description = potential
                     }
                 }
-                cleanLine.equals("@noedit", ignoreCase = true) -> {
+                lower.startsWith("@category") || lower.startsWith("category:") -> {
+                    val value = cleanLine.substringAfter(":").removePrefix("@category").trim().removePrefix(":").trim()
+                    if (value.isNotBlank()) category = value
+                }
+                lower.startsWith("@apk") || lower.startsWith("apk:") -> {
+                    val value = cleanLine.substringAfter(":").removePrefix("@apk").removePrefix("@APK").trim().removePrefix(":").trim()
+                    if (value.isNotBlank()) apkPath = value
+                }
+                lower.equals("@noedit") || lower.startsWith("noedit:") -> {
                     noEdit = true
                 }
-                cleanLine.startsWith("@target", ignoreCase = true) -> {
-                    val pkg = cleanLine.substringAfter("@target").trim().removePrefix(":").trim()
-                    if (pkg.isNotEmpty()) targetPackages.add(pkg)
+                lower.startsWith("@target") || lower.startsWith("target:") -> {
+                    val pkg = cleanLine.substringAfter(":").removePrefix("@target").trim().removePrefix(":").trim()
+                    if (pkg.isNotEmpty() && !pkg.startsWith("0x")) {
+                        pkg.split(",", ";").forEach { p ->
+                            val cleanPkg = p.trim()
+                            if (cleanPkg.isNotEmpty() && !targetPackages.contains(cleanPkg)) {
+                                targetPackages.add(cleanPkg)
+                            }
+                        }
+                    }
                 }
-                !cleanLine.startsWith("@") && cleanLine.isNotEmpty() && name == null -> {
+                !cleanLine.startsWith("@") && !cleanLine.contains(":") && cleanLine.length in 3..40 && name == null -> {
                     name = cleanLine.trim()
                 }
                 description == null && !cleanLine.startsWith("@") && cleanLine.length > 20 && cleanLine.isGoodDescription() -> {
@@ -367,7 +421,9 @@ class ScriptManager(private val context: Context) {
                 version = version, 
                 author = author, 
                 targetPackages = targetPackages,
-                noEdit = noEdit
+                noEdit = noEdit,
+                category = category,
+                apkPath = apkPath
             ),
             "description" to description
         )

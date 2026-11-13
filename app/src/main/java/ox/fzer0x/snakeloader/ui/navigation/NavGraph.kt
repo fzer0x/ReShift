@@ -175,6 +175,9 @@ fun ReShiftNavGraph(
                 },
                 onNavigateToDeviceSpoofer = {
                     navController.navigate(Screen.DeviceSpoofer.route)
+                },
+                onNavigateToMemoryInspector = {
+                    navController.navigate(Screen.MemoryInspector.route)
                 }
             )
         }
@@ -196,6 +199,9 @@ fun ReShiftNavGraph(
                 },
                 onNavigateToEditor = { scriptId ->
                     navController.navigate(Screen.ScriptEditor.createRoute(scriptId))
+                },
+                onNavigateToDetails = { scriptId ->
+                    navController.navigate(Screen.ModuleDetails.createRoute(scriptId))
                 }
             )
         }

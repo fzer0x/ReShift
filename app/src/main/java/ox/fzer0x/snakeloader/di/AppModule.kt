@@ -24,6 +24,11 @@ val appModule = module {
     single { UpdateManager(get()) }
     single { DexDecompilerEngine(get()) }
     single { DeviceSpooferManager(get()) }
+    single { RpcBridge(get()) }
+    single { ox.fzer0x.snakeloader.data.PatchTransactionManager(get()) }
+    single { ox.fzer0x.snakeloader.data.PatchRepository(get(), get()) }
+    single { ox.fzer0x.snakeloader.data.LivePatchMonitor(get()) }
+    single { ox.fzer0x.snakeloader.ui.TrainerOverlayController(get(), get(), get()) }
     
     viewModel { MainViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { DexDecompilerViewModel(get(), get()) }

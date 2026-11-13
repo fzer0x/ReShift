@@ -127,6 +127,7 @@ fun LogsScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             Column {
                 if (isSearchExpanded) {

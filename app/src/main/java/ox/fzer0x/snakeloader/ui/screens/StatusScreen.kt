@@ -56,6 +56,7 @@ fun StatusScreen(
     onNavigateToToolbox: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToStalker: () -> Unit,
+    onNavigateToMemoryInspector: (() -> Unit)? = null,
     onNavigateToIl2CppInspector: ((DumperEngine) -> Unit)? = null,
     onNavigateToDeviceSpoofer: (() -> Unit)? = null
 ) {
@@ -68,6 +69,7 @@ fun StatusScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             ReShiftTopAppBar(
                 title = "ReShift",
@@ -140,6 +142,7 @@ fun StatusScreen(
                     onOpenIl2CppDumper = { onNavigateToIl2CppInspector?.invoke(DumperEngine.IL2CPP) },
                     onOpenUe4Dumper = { onNavigateToIl2CppInspector?.invoke(DumperEngine.UE4) },
                     onOpenHardwareSpoofer = { onNavigateToDeviceSpoofer?.invoke() },
+                    onOpenMemoryInspector = { onNavigateToMemoryInspector?.invoke() },
                     isLoading = viewModel.isLoading,
                     hasRoot = viewModel.hasRoot
                 )
@@ -354,6 +357,7 @@ fun QuickActionsGrid(
     onOpenIl2CppDumper: () -> Unit,
     onOpenUe4Dumper: () -> Unit,
     onOpenHardwareSpoofer: () -> Unit,
+    onOpenMemoryInspector: (() -> Unit)? = null,
     isLoading: Boolean,
     hasRoot: Boolean
 ) {
@@ -405,16 +409,17 @@ fun QuickActionsGrid(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             QuickActionChip(
+                label = "Memory Inspector",
+                icon = Icons.Default.Memory,
+                onClick = { onOpenMemoryInspector?.invoke() },
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.weight(1f)
+            )
+            QuickActionChip(
                 label = "Hardware Spoofer",
                 icon = Icons.Default.PhoneAndroid,
                 onClick = onOpenHardwareSpoofer,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f)
-            )
-            QuickActionChip(
-                label = "Settings",
-                icon = Icons.Default.Settings,
-                onClick = onOpenSettings,
                 modifier = Modifier.weight(1f)
             )
         }

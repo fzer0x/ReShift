@@ -1,7 +1,7 @@
 id=snakeloader_frida
 name=ReShift
-version=1.2.0
-versionCode=120
+version=1.2.1
+versionCode=121
 author=fzer0x
 description=Universal Frida & Zygisk Integration for ReShift. On-Demand Runtime Binary Management via ReShift App.
 zygisk=true

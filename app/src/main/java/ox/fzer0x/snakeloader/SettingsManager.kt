@@ -28,6 +28,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getFloat("overlay_opacity", 0.7f)
         set(value) = prefs.edit().putFloat("overlay_opacity", value).apply()
 
+    var overlayColor: Long
+        get() = prefs.getLong("overlay_color", 0xFF00F0FFL)
+        set(value) = prefs.edit().putLong("overlay_color", value).apply()
+
     var isStealthModeEnabled: Boolean
         get() {
             if (prefs.contains("stealth_mode_enabled") && !prefs.contains("stealth_mode_enabled_encrypted")) {
@@ -224,6 +228,18 @@ class SettingsManager(context: Context) {
             "gemini-3.8-flash" to "Gemini 3.8 Flash",
             "gemini-3.6-flash" to "Gemini 3.6 Flash",
             "gemini-3.5-flash-lite" to "3.5 Flash Lite"
+        )
+
+        val OVERLAY_COLOR_PRESETS = listOf(
+            0xFF00F0FFL to "Cyber Cyan",
+            0xFF00FF66L to "Matrix Green",
+            0xFFFF007AL to "Cyber Pink",
+            0xFFFF6B00L to "Sunset Amber",
+            0xFFFF1744L to "Crimson Red",
+            0xFF7C4DFFL to "Deep Violet",
+            0xFF00B0FFL to "Ice Blue",
+            0xFFFFD700L to "Golden Gold",
+            0xFFFFFFFFL to "Pure White"
         )
     }
 

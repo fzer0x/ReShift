@@ -133,6 +133,7 @@ fun CodeShareBrowserScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             ReShiftTopAppBar(
@@ -248,8 +249,6 @@ fun CodeShareBrowserScreen(
                             }
                         }
                     }
-                    
-                    item { Spacer(Modifier.height(40.dp)) }
                 }
             }
         }

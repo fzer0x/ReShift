@@ -109,6 +109,45 @@ class MultiScriptLoader(private val context: Context, private val fridaManager: 
 
 console.log('[Snakeloader] === GLOBAL UTILITIES LOADING ===');
 
+if (typeof Module !== 'undefined' && typeof Module.findExportByName !== 'function') {
+    Module.findExportByName = function(moduleName, exportName) {
+        if (typeof exportName === 'undefined') {
+            exportName = moduleName;
+            moduleName = null;
+        }
+        if (typeof Module.getExportByName === 'function') {
+            try {
+                return Module.getExportByName(moduleName, exportName);
+            } catch (_) {}
+        }
+        if (moduleName) {
+            try {
+                const mod = Process.findModuleByName(moduleName);
+                if (mod) {
+                    if (typeof mod.findExportByName === 'function') {
+                        return mod.findExportByName(exportName);
+                    }
+                    if (typeof mod.getExportByName === 'function') {
+                        try { return mod.getExportByName(exportName); } catch (_) {}
+                    }
+                }
+            } catch (_) {}
+        } else {
+            try {
+                if (typeof Process.getExportByName === 'function') {
+                    return Process.getExportByName(exportName);
+                }
+            } catch (_) {}
+            try {
+                if (typeof Process.findExportByName === 'function') {
+                    return Process.findExportByName(exportName);
+                }
+            } catch (_) {}
+        }
+        return null;
+    };
+}
+
 if (typeof Process.SCRIPT_REGISTRY === 'undefined') {
     Process.SCRIPT_REGISTRY = {
         scripts: {},

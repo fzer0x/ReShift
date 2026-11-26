@@ -1,5 +1,5 @@
 /**
- * RP GRAND MOBILE
+ * RP GRAND MOBILE (OUTDATED)
  * @version 1.0
  * Target: com.Grand.Napal
  * @description Mod Menu for RP GRAND MOBILE

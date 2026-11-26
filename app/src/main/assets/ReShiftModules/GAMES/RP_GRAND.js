@@ -1,6 +1,6 @@
 /**
  * RP GRAND MOBILE (OUTDATED)
- * @version 1.0
+ * @version 1.0 (OUTDATED)
  * Target: com.Grand.Napal
  * @description Mod Menu for RP GRAND MOBILE
  * @APK: assets/Menu_RP.apk

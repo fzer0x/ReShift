@@ -26,7 +26,7 @@ class FridaManager(
     val dynamicUiManager: DynamicUiManager,
     val stalkerManager: StalkerManager,
     val stealthConfig: StealthConfigManager
-) {
+) : java.io.Closeable {
     companion object {
         private const val TAG = "FridaManager"
         private const val PREF_SELECTED_BINARY = "selected_frida_binary"
@@ -897,4 +897,15 @@ class FridaManager(
     }
 
     fun getDetectedHooks(): Set<String> = detectedHooksSet.toSet()
+
+    override fun close() {
+        try {
+            stopScript()
+            activeAgentEngine?.reset()
+            activeAgentEngine = null
+            scope.cancel()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error closing FridaManager", e)
+        }
+    }
 }

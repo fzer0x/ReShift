@@ -29,9 +29,14 @@ class DexParser {
         return try {
             RandomAccessFile(dexFile, "r").use { raf ->
                 val channel = raf.channel
-                val mappedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size())
+                val fileSize = channel.size()
+                if (fileSize < 112 || fileSize > 150_000_000) {
+                    Log.w(TAG, "DEX file size invalid or out of bounds (${fileSize} bytes) for ${dexFile.name}")
+                    return emptyList()
+                }
+                val mappedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize)
                 mappedBuffer.order(ByteOrder.LITTLE_ENDIAN)
-                val bytes = ByteArray(channel.size().toInt())
+                val bytes = ByteArray(fileSize.toInt())
                 mappedBuffer.get(bytes)
                 val parsed = parseDexBytes(bytes, dexFileName = dexFile.name)
                 if (searchQuery.isNotBlank()) {
@@ -46,6 +51,9 @@ class DexParser {
                     parsed.take(limit)
                 }
             }
+        } catch (e: OutOfMemoryError) {
+            Log.e(TAG, "OOM error parsing DEX file ${dexFile.name}", e)
+            emptyList()
         } catch (e: Exception) {
             Log.e(TAG, "Failed parsing memory-mapped DEX file ${dexFile.absolutePath}", e)
             emptyList()

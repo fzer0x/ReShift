@@ -25,6 +25,16 @@ class DeviceSpooferProvider : ContentProvider() {
         return true
     }
 
+    private fun isCallerAuthorized(): Boolean {
+        val callingUid = android.os.Binder.getCallingUid()
+        val myUid = android.os.Process.myUid()
+        if (callingUid == myUid || callingUid == 0 || callingUid == 1000) return true
+
+        val context = context ?: return false
+        val permissionResult = context.checkCallingOrSelfPermission("ox.fzer0x.snakeloader.PERMISSION_SPOOFER_IPC")
+        return permissionResult == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
     override fun query(
         uri: Uri,
         projection: Array<out String>?,
@@ -32,6 +42,9 @@ class DeviceSpooferProvider : ContentProvider() {
         selectionArgs: Array<out String>?,
         sortOrder: String?
     ): Cursor? {
+        if (!isCallerAuthorized()) {
+            return null
+        }
         val context = context ?: return null
         val packageName = when {
             !selectionArgs.isNullOrEmpty() && selectionArgs[0].isNotEmpty() -> selectionArgs[0]

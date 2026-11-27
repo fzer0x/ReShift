@@ -15,6 +15,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <permission
+        android:name="ox.fzer0x.snakeloader.PERMISSION_SPOOFER_IPC"
+        android:label="ReShift Spoofer IPC Access"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="ox.fzer0x.snakeloader.PERMISSION_SPOOFER_IPC" />
+
     <application
         android:name="ox.fzer0x.snakeloader.ReShiftApp"
         android:allowBackup="true"
@@ -120,12 +126,14 @@
             android:name="ox.fzer0x.snakeloader.spoofer.DeviceSpooferProvider"
             android:authorities="ox.fzer0x.snakeloader.spoofer.provider"
             android:exported="true"
+            android:permission="ox.fzer0x.snakeloader.PERMISSION_SPOOFER_IPC"
             android:grantUriPermissions="true"
             tools:ignore="ExportedContentProvider" />
 
         <receiver
             android:name="ox.fzer0x.snakeloader.spoofer.SpooferActivationReceiver"
             android:exported="true"
+            android:permission="ox.fzer0x.snakeloader.PERMISSION_SPOOFER_IPC"
             tools:ignore="ExportedReceiver">
             <intent-filter>
                 <action android:name="ox.fzer0x.snakeloader.action.VECTOR_ACTIVATED" />

@@ -108,18 +108,17 @@ class DeviceSpooferManager(
             }
 
             if (ShellExecutor.isRootAvailable()) {
-                ShellExecutor.execute("chmod 777 /data/local/tmp", useRoot = true)
                 ShellExecutor.execute(
-                    "cp ${configFile.absolutePath} /data/local/tmp/reshift_spoofer.json && chmod 666 /data/local/tmp/reshift_spoofer.json",
+                    "cp ${configFile.absolutePath} /data/local/tmp/reshift_spoofer.json && chmod 644 /data/local/tmp/reshift_spoofer.json",
                     useRoot = true
                 )
                 ShellExecutor.execute(
-                    "mkdir -p /data/adb/reshift && chmod 755 /data/adb/reshift && cp ${configFile.absolutePath} $rootConfigPath && chmod 666 $rootConfigPath",
+                    "mkdir -p /data/adb/reshift && chmod 755 /data/adb/reshift && cp ${configFile.absolutePath} $rootConfigPath && chmod 644 $rootConfigPath",
                     useRoot = true
                 )
                 val fallbackPath = "/data/data/ox.fzer0x.snakeloader/files/spoofer_config.json"
                 ShellExecutor.execute(
-                    "cp ${configFile.absolutePath} $fallbackPath && chmod 666 $fallbackPath",
+                    "cp ${configFile.absolutePath} $fallbackPath && chmod 644 $fallbackPath",
                     useRoot = true
                 )
                 val activeState = if (configData.isEngineEnabled) "1" else "0"
